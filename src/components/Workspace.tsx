@@ -362,6 +362,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
 
 function WeaponGridItem({ file, isSelected, onClick }: { file: LoadedFile; isSelected: boolean; onClick: () => void }) {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const weaponName = extractWeaponName(file.name);
 
   useEffect(() => {
@@ -372,25 +373,54 @@ function WeaponGridItem({ file, isSelected, onClick }: { file: LoadedFile; isSel
     }
   }, [file.rawFile]);
 
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(weaponName);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  };
+
   return (
     <div onClick={onClick} style={{
-      padding: 6, cursor: "pointer",
+      padding: 6, cursor: "pointer", position: "relative",
       background: isSelected ? "rgba(234,179,8,0.12)" : "rgba(255,255,255,0.02)",
       border: isSelected ? "1px solid rgba(234,179,8,0.4)" : "1px solid var(--border)",
       borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
       transition: "all 0.15s",
     }}>
-      {imgUrl ? (
-        <img src={imgUrl} alt="" style={{ width: 60, height: 60, objectFit: "contain", borderRadius: 4 }} />
-      ) : (
-        <div style={{ width: 60, height: 60, borderRadius: 4, background: "var(--bg3)" }} />
-      )}
-      <div style={{
-        fontSize: 9, fontWeight: 500, color: isSelected ? "var(--yellow)" : "var(--fg)",
-        textAlign: "center", overflow: "hidden", textOverflow: "ellipsis",
-        whiteSpace: "nowrap", width: "100%",
-      }}>
-        {weaponName}
+      <button onClick={handleCopy} title="نسخ اسم السلاح" style={{
+        position: "absolute", top: 4, right: 4, width: 18, height: 18,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: copied ? "rgba(34,197,94,0.8)" : "rgba(0,0,0,0.5)",
+        border: "none", borderRadius: 4, cursor: "pointer",
+        color: "#fff", fontSize: 8, opacity: 0, transition: "opacity 0.15s",
+        zIndex: 2,
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+      >{copied ? "✓" : "📋"}</button>
+      <div
+        onMouseEnter={(e) => {
+          const btn = e.currentTarget.parentElement?.querySelector("button") as HTMLButtonElement;
+          if (btn) btn.style.opacity = "1";
+        }}
+        onMouseLeave={(e) => {
+          const btn = e.currentTarget.parentElement?.querySelector("button") as HTMLButtonElement;
+          if (btn && !copied) btn.style.opacity = "0";
+        }}
+        style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
+      >
+        {imgUrl ? (
+          <img src={imgUrl} alt="" style={{ width: 60, height: 60, objectFit: "contain", borderRadius: 4 }} />
+        ) : (
+          <div style={{ width: 60, height: 60, borderRadius: 4, background: "var(--bg3)" }} />
+        )}
+        <div style={{
+          fontSize: 9, fontWeight: 500, color: isSelected ? "var(--yellow)" : "var(--fg)",
+          textAlign: "center", overflow: "hidden", textOverflow: "ellipsis",
+          whiteSpace: "nowrap", width: "100%",
+        }}>
+          {weaponName}
+        </div>
       </div>
     </div>
   );
