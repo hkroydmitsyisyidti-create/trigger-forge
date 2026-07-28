@@ -162,7 +162,28 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
     setPasteCode("");
   };
 
-  const allItemFiles = useMemo(() => files.filter((f) => /\.(png|jpg|jpeg|webp)$/i.test(f.name)), [files]);
+  const allItemFiles = useMemo(() => files.filter((f) => {
+    if (!/\.(png|jpg|jpeg|webp)$/i.test(f.name)) return false;
+    const name = f.name.replace(/\.(png|jpg|jpeg|webp)$/i, "").toLowerCase();
+    
+    // Exclude UI elements
+    const uiPatterns = /^(crosshair|debug_image|grid|move|hint|interact|bg|monitorborder|bottom|top|hook|lock|pin|slot|spring|wrench|note|logo|none|back|cursor|map\d*|spray|AlphaSpray|newimage|removebg|eagle|wheel|yacht|card|dark-mode|AppStore|Birdy|Browser|Calculator|Camera|Clock|Crypto|DarkChat|FaceTime|Garage|Health|Home|InstaPic|Mail|Maps|MarketPlace|Messages|Music|Notes|Phone|Photos|Racing|Safari|Services|Settings|Spark|Trendy|unkown|VoiceMemo|Wallet|Weather|YellowPages|danger|gallery|picker|faceUnlock|match|banner|warning|tornado|wind|cloudy|drizzle|fog|heavy-rain|night|partly-cloudy|rain|snow|sunny|thunder|ibos|light-mode|no-pfp|mock|picchat|logo|bck|note|RB|EUCTRION|pacificcard|paletocard|package|pain|paint|pancake|panther|paw|peach|pear|pen|pencil|pepper|phone|photo|pie|pill|pizza|plant|plate|plumb|poison|pony|pot|potato|potion|pressure|prune|pudding|pumpkin|purse|queen|quest|rabbit|radish|rail|rainbow|ramen|ransom|receipt|record|recycle|remote|ring|road|rock|roll|rope|rose|ruby|ruler|runners|saddle|sake|salt|sandwich|sauce|saw|scale|scissors|scorpion|screw|seed|sheep|shell|shield|shoe|shovel|shrimp|sickle|signal|silk|sink|skateboard|skeleton|ski|skull|sledge|slush|smoke|snake|snowball|soap|sock|soda|sofa|solar|spaghetti|sparkle|spear|spice|spoon|spray|sprunk|stamp|star|statue|steak|steel|sticker|stone|stove|straw|stripe|sub|suit|sundae|sushi|sword|syringe|tablet|taco|tag|tank|tape|taxi|teapot|teddy|ticket|tie|tiger|tobacco|toilet|tomato|tool|tooth|torch|tower|toy|train|trash|treasure|tree|trophy|truck|trumpet|tshirt|turtle|tv|umbrella|unicorn|usd|vape|vault|vent|vial|video|vinyl|violin|visa|vodka|volcano|waffle|wallet|watch|water|weasel|weed|whale|whiskey|wheat|whistle|white|widow|window|wine|witch|wolf|wood|wool|xmas|yacht|yoga|zebra|zombie)$/i.test(name);
+    if (uiPatterns) return false;
+    
+    // Exclude sprays
+    if (/^(np_sprays|spray)/i.test(name)) return false;
+    
+    // Exclude phone screenshots (numbers only)
+    if (/^\d+$/.test(name)) return false;
+    
+    // Exclude very short names (likely UI elements)
+    if (name.length <= 2) return false;
+    
+    // Exclude names with only numbers and underscores
+    if (/^[\d_]+$/.test(name)) return false;
+    
+    return true;
+  }), [files]);
   const triggerData = useMemo(() => {
     const items: { file: LoadedFile; events: { name: string; line: number; raw: string }[] }[] = [];
     for (const f of files) {
