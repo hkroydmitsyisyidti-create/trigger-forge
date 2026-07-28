@@ -10,12 +10,6 @@ export default function App() {
   const [view, setView] = useState<View>("gate");
 
   useEffect(() => {
-    if (localStorage.getItem("triggerforge_unlocked") === "true") {
-      setView("workspace");
-    }
-  }, []);
-
-  useEffect(() => {
     const prevent = (e: Event) => e.preventDefault();
     window.addEventListener("dragover", prevent);
     window.addEventListener("drop", prevent);
