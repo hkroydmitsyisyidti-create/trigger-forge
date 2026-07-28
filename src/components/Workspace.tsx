@@ -2,15 +2,27 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import FileReportModal from "./FileReportModal";
 import { detectFileType } from "../lib/fileReader";
 
-function extractServerEvents(content: string): string[] {
-  const names: string[] = [];
+function extractServerEvents(content: string): { name: string; line: number; raw: string }[] {
+  const events: { name: string; line: number; raw: string }[] = [];
   const seen = new Set<string>();
-  const re = /TriggerServerEvent\s*\(\s*["']([^"']+)["']/g;
-  let m;
-  while ((m = re.exec(content)) !== null) {
-    if (!seen.has(m[1])) { seen.add(m[1]); names.push(m[1]); }
-  }
-  return names;
+  const lines = content.split("\n");
+  const patterns = [
+    /TriggerServerEvent\s*\(\s*["']([^"']+)["']/g,
+    /TriggerServerEvent\s*\(\s*["']([^"']+)["']\s*,/g,
+  ];
+  lines.forEach((line, idx) => {
+    for (const re of patterns) {
+      re.lastIndex = 0;
+      let m;
+      while ((m = re.exec(line)) !== null) {
+        if (!seen.has(m[1])) {
+          seen.add(m[1]);
+          events.push({ name: m[1], line: idx + 1, raw: line.trim() });
+        }
+      }
+    }
+  });
+  return events;
 }
 
 function isWeaponImage(name: string): boolean {
@@ -168,7 +180,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
 
   const weaponFiles = useMemo(() => files.filter((f) => isWeaponImage(f.name)), [files]);
   const triggerData = useMemo(() => {
-    const items: { file: LoadedFile; events: string[] }[] = [];
+    const items: { file: LoadedFile; events: { name: string; line: number; raw: string }[] }[] = [];
     for (const f of files) {
       const events = extractServerEvents(f.content);
       if (events.length > 0) items.push({ file: f, events });
@@ -185,7 +197,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const filteredTriggers = useMemo(() => {
     if (!searchT.trim()) return triggerData;
     const q = searchT.toLowerCase();
-    return triggerData.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.toLowerCase().includes(q)));
+    return triggerData.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.name.toLowerCase().includes(q)));
   }, [triggerData, searchT]);
 
   useEffect(() => { if (selWeapon >= filteredWeapons.length) setSelWeapon(0); }, [filteredWeapons.length, selWeapon]);
@@ -280,9 +292,9 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                   style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 6px", color: "var(--fg)", fontSize: 10, outline: "none" }} />
                 <button onClick={() => {
                   let text = "";
-                  filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((n) => { text += `  TriggerServerEvent("${n}")\n`; }); text += "\n"; });
+                  filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((e) => { text += `  TriggerServerEvent("${e.name}")\n`; }); text += "\n"; });
                   navigator.clipboard.writeText(text);
-                }} style={{ fontSize: 9, padding: "2px 8px", background: "var(--red)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}>نسخ</button>
+                }} style={{ fontSize: 9, padding: "2px 8px", background: "var(--red)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}>نسخ الكل</button>
               </div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                 <div style={{ width: 150, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
@@ -295,7 +307,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                       borderLeft: selTrigger === i ? "2px solid var(--red)" : "2px solid transparent",
                     }}>
                       <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.file.name}</div>
-                      <div style={{ fontSize: 8, color: "var(--muted)" }}>{item.events.length} حدث</div>
+                      <div style={{ fontSize: 8, color: "var(--muted)" }}>{item.events.length} أحداث</div>
                     </div>
                   ))}
                 </div>
@@ -364,7 +376,7 @@ function WeaponPreview({ file }: { file: LoadedFile }) {
   );
 }
 
-function TriggerDetail({ item }: { item: { file: LoadedFile; events: string[] } }) {
+function TriggerDetail({ item }: { item: { file: LoadedFile; events: { name: string; line: number; raw: string }[] } }) {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
@@ -375,14 +387,20 @@ function TriggerDetail({ item }: { item: { file: LoadedFile; events: string[] } 
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {item.events.map((name, i) => (
+        {item.events.map((e, i) => (
           <div key={i} style={{
-            padding: "6px 10px", background: "var(--bg)", borderRadius: 4, fontSize: 11, fontFamily: "monospace",
-            color: "var(--yellow)", border: "1px solid var(--border)", direction: "ltr", textAlign: "left",
+            padding: "6px 10px", background: "var(--bg)", borderRadius: 4,
+            border: "1px solid var(--border)", direction: "ltr", textAlign: "left",
             display: "flex", alignItems: "center", gap: 6,
           }}>
             <span style={{ fontSize: 8, fontWeight: 700, color: "#fff", background: "var(--red)", padding: "1px 4px", borderRadius: 3, whiteSpace: "nowrap" }}>TSE</span>
-            {name}
+            <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--yellow)", flex: 1 }}>{e.name}</span>
+            <span style={{ fontSize: 8, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
+            <button
+              onClick={() => navigator.clipboard.writeText(`TriggerServerEvent("${e.name}")`)}
+              style={{ fontSize: 8, padding: "1px 6px", background: "var(--border)", color: "var(--fg)", border: "none", borderRadius: 3, cursor: "pointer", whiteSpace: "nowrap" }}
+              title="نسخ"
+            >نسخ</button>
           </div>
         ))}
       </div>
