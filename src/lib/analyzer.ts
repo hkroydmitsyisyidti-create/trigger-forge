@@ -500,18 +500,58 @@ function analyzeGeneric(name: string, content: string, size: number): AnalysisRe
   const words = content.split(/\s+/).filter((w) => w).length;
   const emptyLines = lines.filter((l) => !l.trim()).length;
 
+  const triggerEvents: { name: string; type: string; line: number }[] = [];
+  const warnings: string[] = [];
+  const recommendations: string[] = [];
+
+  lines.forEach((line, idx) => {
+    const ln = idx + 1;
+    const t = line.trim();
+
+    const triggerServerMatch = t.match(/TriggerServerEvent\s*\(\s*["']([^"']+)["']/);
+    if (triggerServerMatch) triggerEvents.push({ name: triggerServerMatch[1], type: "TriggerServerEvent", line: ln });
+
+    const triggerClientMatch = t.match(/TriggerClientEvent\s*\(\s*["']([^"']+)["']/);
+    if (triggerClientMatch) triggerEvents.push({ name: triggerClientMatch[1], type: "TriggerClientEvent", line: ln });
+
+    const registerNetMatch = t.match(/RegisterNetEvent\s*\(\s*["']([^"']+)["']/);
+    if (registerNetMatch) triggerEvents.push({ name: registerNetMatch[1], type: "RegisterNetEvent", line: ln });
+
+    const addEventHandlerMatch = t.match(/AddEventHandler\s*\(\s*["']([^"']+)["']/);
+    if (addEventHandlerMatch) triggerEvents.push({ name: addEventHandlerMatch[1], type: "AddEventHandler", line: ln });
+
+    const triggerEventMatch = t.match(/TriggerEvent\s*\(\s*["']([^"']+)["']/);
+    if (triggerEventMatch) triggerEvents.push({ name: triggerEventMatch[1], type: "TriggerEvent", line: ln });
+  });
+
+  const sections: AnalysisSection[] = [
+    { title: "Stats", color: "var(--cyan)", icon: "i", items: [{ label: `${lines.length} lines` }, { label: `${words} words` }, { label: `${emptyLines} empty lines` }] },
+  ];
+
+  if (triggerEvents.length > 0) {
+    sections.push({
+      title: "Trigger Events",
+      color: "var(--red)",
+      icon: "\u26A1",
+      items: triggerEvents.map((e) => ({ label: `${e.type}("${e.name}")`, type: "warning" as const, line: e.line, value: e.type })),
+    });
+    recommendations.push(`${triggerEvents.length} trigger event(s) found - review event names and parameters`);
+  }
+
+  if (triggerEvents.length > 0) {
+    warnings.push("FiveM trigger events detected in non-Lua file");
+  }
+
   return {
     fileType: "Text",
     fileName: name,
     fileSize: size,
     isBinary: false,
     isEmpty: false,
-    summary: `Text file with ${lines.length} lines, ${words} words. ${emptyLines} empty line(s).`,
-    sections: [
-      { title: "Stats", color: "var(--cyan)", icon: "i", items: [{ label: `${lines.length} lines` }, { label: `${words} words` }, { label: `${emptyLines} empty lines` }] },
-    ],
-    recommendations: [],
-    warnings: [],
+    summary: `Text file with ${lines.length} lines, ${words} words. ${triggerEvents.length > 0 ? triggerEvents.length + " trigger event(s) detected." : ""} ${emptyLines} empty line(s).`,
+    sections,
+    recommendations,
+    warnings,
   };
 }
 
