@@ -81,6 +81,46 @@ function extractTriggers(content: string, fileName: string): TriggerEvent[] {
   return events;
 }
 
+function analyzeVulnerabilities(events: TriggerEvent[]): string[] {
+  const vulns: string[] = [];
+  const names = events.map((e) => e.name.toLowerCase());
+  const raws = events.map((e) => e.raw.toLowerCase());
+
+  if (names.some((n) => /cuff|handcuff|arrest|jail|detain/.test(n)))
+    vulns.push("ثغرة تقييد/اعتقال — يمكن اختراقها لقييد أي لاعب بدون سبب");
+  if (names.some((n) => /death|kill|dead|wasted|respawn/.test(n)))
+    vulns.push("ثغرة قتل/موت — يمكن استخدامها للقتل عن بعد أو تغيير حالة اللاعب");
+  if (names.some((n) => /money|cash|bank|pay|give|transfer/.test(n)))
+    vulns.push("ثغرة مالية — يمكن اختراقها لإضافة أو سحب أموال بدون قيود");
+  if (names.some((n) => /vehicle|car|spawn|garage|plate/.test(n)))
+    vulns.push("ثغرة سيارات — يمكن اختراقها لسرقة أو توليد سيارات بشكل غير مصرح");
+  if (names.some((n) => /weapon|gun|loadout|ammo/.test(n)))
+    vulns.push("ثغرة أسلحة — يمكن استخدامها للحصول على أسلحة غير مصرح بها");
+  if (names.some((n) => /teleport|tp|warp|goto/.test(n)))
+    vulns.push("ثغرة انتقال — يمكن استخدامها للتنقل لأي مكان في الخريطة");
+  if (names.some((n) => /inventory|item|drop|give|take/.test(n)))
+    vulns.push("ثغرة مخزون — يمكن اختراقها لوضع أو سحب أي أيتم من مخزون لاعب");
+  if (names.some((n) => /admin|ban|kick|unban|permission/.test(n)))
+    vulns.push("ثغرة إدارة — يمكن اختراقها للحصول على صلاحيات أدمن غير مصرح بها");
+  if (names.some((n) => /hack|exploit|cheat|mod/.test(n)))
+    vulns.push("ثغرة اختراق — كود اختراق مباشر");
+  if (names.some((n) => /webhook|discord|http|request/.test(n)))
+    vulns.push("ثغرة اتصال خارجي — يمكن استخدامها لإرسال بيانات للخارج");
+  if (names.some((n) => /loadstring|eval|exec/.test(n)))
+    vulns.push("ثغرة تنفيذ كود — يمكن استخدامها لتنفيذ أي كود على السيرفر");
+  if (raws.some((r) => /mysql|query|insert|update|delete/.test(r)))
+    vulns.push("ثغرة قاعدة بيانات — وصول مباشر لقاعدة البيانات");
+  if (names.some((n) => /skin|appearance|model|ped/.test(n)))
+    vulns.push("ثغرة مظهر — يمكن استخدامها لتغيير مظهر أي لاعب");
+  if (names.some((n) => /job|duty|gang|org/.test(n)))
+    vulns.push("ثغرة وظائف — يمكن اختراقها لتغيير وظيفة أو انتماء اللاعب");
+
+  if (vulns.length === 0)
+    vulns.push("لا توجد ثغرات واضحة — الترiggerات تبدو آمنة");
+
+  return vulns;
+}
+
 function extractThreads(content: string, fileName: string): ThreadInfo[] {
   const threads: ThreadInfo[] = [];
   const seen = new Set<string>();
@@ -568,6 +608,17 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                                   <span style={{ width: 5, height: 5, borderRadius: "50%", background: FRAMEWORK_COLORS[topFw] }} />
                                   {FRAMEWORK_LABELS[topFw]}
                                 </div>
+                              </div>
+                              <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", background: "rgba(239,68,68,0.02)" }}>
+                                {analyzeVulnerabilities(item.events).map((v, vi) => (
+                                  <div key={vi} style={{
+                                    fontSize: 10, color: "var(--fire)", lineHeight: 1.6,
+                                    display: "flex", alignItems: "flex-start", gap: 6,
+                                  }}>
+                                    <span style={{ color: "var(--fire)", flexShrink: 0, marginTop: 1 }}>&#9679;</span>
+                                    {v}
+                                  </div>
+                                ))}
                               </div>
                               <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: 6 }}>
                                 {item.events.map((e, i) => (
