@@ -42,9 +42,9 @@ export default function AdminLogin({ onLogin, onClose }: { onLogin: () => void; 
   return (
     <div className="gate">
       <div className="gate-card">
-        <div className="gate-mark admin-icon">🛡️</div>
+        <div className="gate-mark admin-icon">&#128737;&#65039;</div>
         <h2>لوحة الإدارة</h2>
-        <p>للمسؤلين فقط</p>
+        <p className="subtitle">للمسؤلين فقط</p>
         <form onSubmit={handleSubmit} autoComplete="off">
           <input type="text" className="field text-left" placeholder="اسم المستخدم" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
           <input type="password" className="field text-left mt-8" placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />

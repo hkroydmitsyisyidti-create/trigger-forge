@@ -70,7 +70,7 @@ export default function AdminDashboard({ onClose, onLogout }: { onClose: () => v
         </div>
         <div className="admin-inner">
           <div className="admin-nav">
-            <button className={`sb ${tab === "keys" ? "active" : ""}`} onClick={() => setTab("keys")}><span className="dot-blue" />الكيات</button>
+            <button className={`sb ${tab === "keys" ? "active" : ""}`} onClick={() => setTab("keys")}><span className="dot-blue" />المفاتيح</button>
             <button className={`sb ${tab === "logs" ? "active" : ""}`} onClick={() => setTab("logs")}><span className="dot-yellow" />السجلات</button>
             <button className={`sb ${tab === "admins" ? "active" : ""}`} onClick={() => setTab("admins")}><span className="dot-green" />المديرين</button>
           </div>
@@ -119,7 +119,7 @@ function KeysPanel({ db, refresh }: { db: any; refresh: () => void }) {
         </select>
         <button className="admin-abtn gr" onClick={handleGenerate}>+ إنشاء مفتاح</button>
       </div>
-      <p style={{ fontSize: "12px", color: "#888", margin: "8px 0" }}>المفاتيح تعمل على جميع الأجهزة والمتصفحات</p>
+      <p style={{ fontSize: "12px", color: "var(--muted)", margin: "10px 0" }}>المفاتيح تعمل على جميع الأجهزة والمتصفحات</p>
       <div className="admin-table-wrap">
         <table className="admin-tbl">
           <thead><tr><th>المفتاح</th><th>المدة</th><th>التاريخ</th><th className="text-right">الإجراءات</th></tr></thead>
@@ -135,7 +135,7 @@ function KeysPanel({ db, refresh }: { db: any; refresh: () => void }) {
                 </td>
               </tr>
             ))}
-            {db.keys.length === 0 && <tr><td colSpan={4} className="text-center text-zinc-500">لا توجد كيات</td></tr>}
+            {db.keys.length === 0 && <tr><td colSpan={4} className="text-center" style={{ color: "var(--muted)" }}>لا توجد مفاتيح</td></tr>}
           </tbody>
         </table>
       </div>
@@ -155,7 +155,7 @@ function LogsPanel({ db }: { db: any }) {
               <td>{l.action}</td>
             </tr>
           ))}
-          {(!db.logs || db.logs.length === 0) && <tr><td colSpan={2} className="text-center text-zinc-500">لا توجد سجلات</td></tr>}
+          {(!db.logs || db.logs.length === 0) && <tr><td colSpan={2} className="text-center" style={{ color: "var(--muted)" }}>لا توجد سجلات</td></tr>}
         </tbody>
       </table>
     </div>
@@ -224,8 +224,8 @@ function AdminsPanel({ db, refresh }: { db: any; refresh: () => void }) {
                 <td>{a.username}</td>
                 <td>
                   {editingId === a.id ? (
-                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                      <select className="admin-sel" value={editingRole} onChange={(e) => setEditingRole(e.target.value)} style={{ fontSize: 11, padding: "3px 6px" }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <select className="admin-sel" value={editingRole} onChange={(e) => setEditingRole(e.target.value)} style={{ fontSize: 11, padding: "4px 8px" }}>
                         <option value="owner">owner</option>
                         <option value="admin">admin</option>
                         <option value="moderator">moderator</option>
@@ -235,7 +235,7 @@ function AdminsPanel({ db, refresh }: { db: any; refresh: () => void }) {
                       <button className="admin-abtn sm" onClick={() => { setEditingId(null); setEditingRole(""); }}>✕</button>
                     </div>
                   ) : (
-                    <span className={`role-badge role-${a.role}`} style={{ cursor: a.role !== "owner" ? "pointer" : "default" }}
+                    <span className={`role-badge role-${a.role}`}
                       onClick={() => { if (a.role !== "owner") { setEditingId(a.id); setEditingRole(a.role); } }}>
                       {a.role}
                     </span>

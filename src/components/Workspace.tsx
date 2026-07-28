@@ -220,23 +220,23 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           </div>
           <div className="tc">
             <span className="status-pill"><span className={`dot ${statusDot}`} /><span>{status}</span></span>
-            {hasFiles && <span style={{ fontSize: 10, color: "var(--muted)", marginRight: 8 }}>{files.length} ملف | {triggerData.length} ترigger | {weaponFiles.length} سلاح</span>}
+            {hasFiles && <span style={{ fontSize: 11, color: "var(--muted)", marginRight: 8 }}>{files.length} ملف | {triggerData.length} ترigger | {weaponFiles.length} سلاح</span>}
           </div>
-          <div className="tr" style={{ display: "flex", gap: 6 }}>
+          <div className="tr" style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={() => fileInputRef.current?.click()} style={{
-              display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
-              background: "linear-gradient(135deg, var(--red), #dc2626)",
-              border: "none", borderRadius: 8, color: "#fff",
+              display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+              background: "linear-gradient(135deg, var(--red), #b91c1c)",
+              border: "none", borderRadius: 10, color: "#fff",
               fontSize: 12, fontWeight: 600, cursor: "pointer",
-              boxShadow: "0 2px 12px rgba(239,68,68,0.3)",
-              transition: "all 0.15s",
+              boxShadow: "0 2px 16px rgba(239,68,68,0.3)",
+              transition: "all 0.2s",
             }}>&#128194; رفع ملفات</button>
             <button type="button" onClick={() => setShowPaste(true)} style={{
-              display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
-              background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)",
-              borderRadius: 8, color: "var(--purple)",
+              display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+              background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.25)",
+              borderRadius: 10, color: "var(--purple)",
               fontSize: 12, fontWeight: 600, cursor: "pointer",
-              transition: "all 0.15s",
+              transition: "all 0.2s",
             }}>&#128203; لصق كود</button>
             <button type="button" className="ti" title="الإدارة" onClick={onOpenAdmin}>&#9881;&#65039;</button>
           </div>
@@ -248,9 +248,10 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
               <div className="canvas-area">
                 <div className="empty-state">
                   <div className="empty-icon">&#9655;</div>
+                  <h3>ابدأ التحليل</h3>
                   <p>أسقط الملفات والمجلدات هنا</p>
                   <p className="empty-hint">يدعم جميع أنواع الملفات والمجلدات</p>
-                  <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "center" }}>
+                  <div style={{ marginTop: 24, display: "flex", gap: 10, justifyContent: "center" }}>
                     <button className="admin-abtn" onClick={() => setShowPaste(true)}>&#128203; لصق كود</button>
                     <button className="admin-abtn" onClick={() => fileInputRef.current?.click()}>&#128194; رفع ملف</button>
                   </div>
@@ -262,21 +263,21 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           <div style={{ display: "flex", flex: 1, overflow: "hidden", direction: "ltr" }}>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)" }}>
-              <div style={{ padding: "6px 10px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, background: "rgba(234,179,8,0.05)", direction: "rtl" }}>
-                <span style={{ color: "var(--yellow)", fontWeight: 700, fontSize: 11 }}>&#128299; أسلحة ({filteredWeapons.length})</span>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(251,191,36,0.04)", direction: "rtl" }}>
+                <span style={{ color: "var(--yellow)", fontWeight: 700, fontSize: 12 }}>&#128299; أسلحة ({filteredWeapons.length})</span>
                 <input type="text" placeholder="بحث..." value={searchW} onChange={(e) => { setSearchW(e.target.value); setSelWeapon(0); }}
-                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 6px", color: "var(--fg)", fontSize: 10, outline: "none" }} />
+                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
                 <button onClick={() => fileInputRef.current?.click()} style={{
-                  width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "rgba(234,179,8,0.15)", border: "1px solid rgba(234,179,8,0.3)", borderRadius: 4,
-                  color: "var(--yellow)", fontSize: 14, cursor: "pointer", flexShrink: 0,
+                  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: 6,
+                  color: "var(--yellow)", fontSize: 16, cursor: "pointer", flexShrink: 0,
                 }} title="إضافة ملفات">+</button>
               </div>
-              <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
+              <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>
                 {filteredWeapons.length === 0 ? (
-                  <div style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 10 }}>لا توجد أسلحة</div>
+                  <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 11 }}>لا توجد أسلحة</div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
                     {filteredWeapons.map((f, i) => (
                       <WeaponGridItem key={f.name + i} file={f} isSelected={selWeapon === i} onClick={() => setSelWeapon(i)} />
                     ))}
@@ -286,41 +287,42 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             </div>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "6px 10px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, background: "rgba(239,68,68,0.05)", direction: "rtl" }}>
-                <span style={{ color: "var(--red)", fontWeight: 700, fontSize: 11 }}>&#9889; TriggerServerEvent ({filteredTriggers.length})</span>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(248,113,113,0.04)", direction: "rtl" }}>
+                <span style={{ color: "var(--red)", fontWeight: 700, fontSize: 12 }}>&#9889; TriggerServerEvent ({filteredTriggers.length})</span>
                 <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => { setSearchT(e.target.value); setSelTrigger(0); }}
-                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 6px", color: "var(--fg)", fontSize: 10, outline: "none" }} />
+                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
                 <button onClick={() => fileInputRef.current?.click()} style={{
-                  width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 4,
-                  color: "var(--red)", fontSize: 14, cursor: "pointer", flexShrink: 0,
+                  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 6,
+                  color: "var(--red)", fontSize: 16, cursor: "pointer", flexShrink: 0,
                 }} title="إضافة ملفات">+</button>
                 <button onClick={() => {
                   let text = "";
                   filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((e) => { text += `  TriggerServerEvent("${e.name}")\n`; }); text += "\n"; });
                   navigator.clipboard.writeText(text);
-                }} style={{ fontSize: 9, padding: "2px 8px", background: "var(--red)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}>نسخ الكل</button>
+                }} style={{ fontSize: 10, padding: "4px 10px", background: "var(--red)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>نسخ الكل</button>
               </div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                <div style={{ width: 150, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
+                <div style={{ width: 160, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
                   {filteredTriggers.length === 0 ? (
-                    <div style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 10 }}>لا توجد ترiggerات</div>
+                    <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 11 }}>لا توجد ترiggerات</div>
                   ) : filteredTriggers.map((item, i) => (
                     <div key={item.file.name + i} onClick={() => setSelTrigger(i)} style={{
-                      padding: "5px 8px", cursor: "pointer", fontSize: 10, borderBottom: "1px solid var(--border)",
-                      background: selTrigger === i ? "rgba(239,68,68,0.1)" : "transparent",
+                      padding: "7px 10px", cursor: "pointer", fontSize: 11, borderBottom: "1px solid var(--border)",
+                      background: selTrigger === i ? "rgba(248,113,113,0.08)" : "transparent",
                       borderLeft: selTrigger === i ? "2px solid var(--red)" : "2px solid transparent",
+                      transition: "all 0.15s",
                     }}>
                       <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.file.name}</div>
-                      <div style={{ fontSize: 8, color: "var(--muted)" }}>{item.events.length} أحداث</div>
+                      <div style={{ fontSize: 9, color: "var(--muted)" }}>{item.events.length} أحداث</div>
                     </div>
                   ))}
                 </div>
-                <div style={{ flex: 1, overflowY: "auto", padding: 16, direction: "rtl" }}>
+                <div style={{ flex: 1, overflowY: "auto", padding: 20, direction: "rtl" }}>
                   {filteredTriggers[selTrigger] ? (
                     <TriggerDetail item={filteredTriggers[selTrigger]} />
                   ) : (
-                    <div style={{ color: "var(--muted)", fontSize: 11, textAlign: "center", paddingTop: 40 }}>اختر ملف</div>
+                    <div style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", paddingTop: 50 }}>اختر ملف</div>
                   )}
                 </div>
               </div>
@@ -339,15 +341,15 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
               <h3>لصق كود للتحليل</h3>
               <button className="modal-close" onClick={() => setShowPaste(false)}>&times;</button>
             </div>
-            <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", gap: 8 }}>
+            <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", gap: 10 }}>
                 <label style={{ color: "var(--fg)", fontSize: 13, alignSelf: "center" }}>اسم الملف:</label>
                 <input type="text" value={pasteFileName} onChange={(e) => setPasteFileName(e.target.value)} className="bb-input" style={{ flex: 1 }} placeholder="script.lua" spellCheck={false} />
               </div>
               <textarea value={pasteCode} onChange={(e) => setPasteCode(e.target.value)} placeholder="الصق الكود هنا..."
-                style={{ width: "100%", minHeight: 300, background: "var(--bg)", color: "var(--fg)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, fontFamily: "monospace", fontSize: 13, resize: "vertical", direction: "ltr" }}
+                style={{ width: "100%", minHeight: 320, background: "var(--bg)", color: "var(--fg)", border: "1px solid var(--border)", borderRadius: 10, padding: 14, fontFamily: "monospace", fontSize: 13, resize: "vertical", direction: "ltr" }}
                 spellCheck={false} autoFocus />
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button className="admin-abtn" onClick={() => setShowPaste(false)}>إلغاء</button>
                 <button className="admin-abtn gr" onClick={handlePaste} disabled={!pasteCode.trim()}>تحليل</button>
               </div>
@@ -382,18 +384,18 @@ function WeaponGridItem({ file, isSelected, onClick }: { file: LoadedFile; isSel
 
   return (
     <div onClick={onClick} style={{
-      padding: 6, cursor: "pointer", position: "relative",
-      background: isSelected ? "rgba(234,179,8,0.12)" : "rgba(255,255,255,0.02)",
-      border: isSelected ? "1px solid rgba(234,179,8,0.4)" : "1px solid var(--border)",
-      borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-      transition: "all 0.15s",
+      padding: 8, cursor: "pointer", position: "relative",
+      background: isSelected ? "rgba(251,191,36,0.1)" : "var(--glass)",
+      border: isSelected ? "1px solid rgba(251,191,36,0.35)" : "1px solid var(--border)",
+      borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+      transition: "all 0.2s",
     }}>
       <button onClick={handleCopy} title="نسخ اسم السلاح" style={{
-        position: "absolute", top: 4, right: 4, width: 18, height: 18,
+        position: "absolute", top: 4, right: 4, width: 20, height: 20,
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: copied ? "rgba(34,197,94,0.8)" : "rgba(0,0,0,0.5)",
-        border: "none", borderRadius: 4, cursor: "pointer",
-        color: "#fff", fontSize: 8, opacity: 0, transition: "opacity 0.15s",
+        background: copied ? "rgba(34,197,94,0.85)" : "rgba(0,0,0,0.6)",
+        border: "none", borderRadius: 5, cursor: "pointer",
+        color: "#fff", fontSize: 9, opacity: 0, transition: "all 0.2s",
         zIndex: 2,
       }}
       onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
@@ -407,15 +409,15 @@ function WeaponGridItem({ file, isSelected, onClick }: { file: LoadedFile; isSel
           const btn = e.currentTarget.parentElement?.querySelector("button") as HTMLButtonElement;
           if (btn && !copied) btn.style.opacity = "0";
         }}
-        style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}
+        style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}
       >
         {imgUrl ? (
-          <img src={imgUrl} alt="" style={{ width: 60, height: 60, objectFit: "contain", borderRadius: 4 }} />
+          <img src={imgUrl} alt="" style={{ width: 64, height: 64, objectFit: "contain", borderRadius: 6 }} />
         ) : (
-          <div style={{ width: 60, height: 60, borderRadius: 4, background: "var(--bg3)" }} />
+          <div style={{ width: 64, height: 64, borderRadius: 6, background: "var(--bg3)" }} />
         )}
         <div style={{
-          fontSize: 9, fontWeight: 500, color: isSelected ? "var(--yellow)" : "var(--fg)",
+          fontSize: 10, fontWeight: 500, color: isSelected ? "var(--yellow)" : "var(--fg)",
           textAlign: "center", overflow: "hidden", textOverflow: "ellipsis",
           whiteSpace: "nowrap", width: "100%",
         }}>
@@ -429,28 +431,28 @@ function WeaponGridItem({ file, isSelected, onClick }: { file: LoadedFile; isSel
 function TriggerDetail({ item }: { item: { file: LoadedFile; events: { name: string; line: number; raw: string }[] } }) {
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-        <span style={{ fontSize: 16 }}>&#9889;</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        <span style={{ fontSize: 18 }}>&#9889;</span>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--red)" }}>{item.file.name}</div>
-          <div style={{ fontSize: 10, color: "var(--muted)" }}>{item.events.length} TriggerServerEvent</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--red)" }}>{item.file.name}</div>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.events.length} TriggerServerEvent</div>
         </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {item.events.map((e, i) => (
           <div key={i} style={{
-            padding: "6px 10px", background: "var(--bg)", borderRadius: 4,
+            padding: "8px 12px", background: "var(--glass)", borderRadius: 8,
             border: "1px solid var(--border)", direction: "ltr", textAlign: "left",
-            display: "flex", alignItems: "center", gap: 6,
+            display: "flex", alignItems: "center", gap: 8,
           }}>
-            <span style={{ fontSize: 8, fontWeight: 700, color: "#fff", background: "var(--red)", padding: "1px 4px", borderRadius: 3, whiteSpace: "nowrap" }}>TSE</span>
-            <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--yellow)", flex: 1 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: "var(--red)", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>TSE</span>
+            <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--yellow)", flex: 1 }}>
               <span style={{ color: "var(--muted)" }}>TriggerServerEvent(</span>"<span style={{ color: "var(--green)" }}>{e.name}</span>"<span style={{ color: "var(--muted)" }}>)</span>
             </span>
-            <span style={{ fontSize: 8, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
+            <span style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
             <button
               onClick={() => navigator.clipboard.writeText(`TriggerServerEvent("${e.name}")`)}
-              style={{ fontSize: 8, padding: "1px 6px", background: "var(--border)", color: "var(--fg)", border: "none", borderRadius: 3, cursor: "pointer", whiteSpace: "nowrap" }}
+              style={{ fontSize: 9, padding: "3px 8px", background: "var(--border)", color: "var(--fg)", border: "none", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
               title="نسخ"
             >نسخ</button>
           </div>

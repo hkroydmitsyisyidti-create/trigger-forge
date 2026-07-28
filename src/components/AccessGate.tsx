@@ -63,23 +63,23 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
         </form>
       </div>
 
-      <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", maxWidth: 380, lineHeight: 1.6 }}>
-        <div style={{ marginBottom: 8, fontWeight: 600, color: "var(--fg)", fontSize: 13 }}>كيف يعمل؟</div>
-        <div style={{ display: "flex", gap: 16, justifyContent: "center", marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", maxWidth: 400, lineHeight: 1.8 }}>
+        <div style={{ marginBottom: 10, fontWeight: 700, color: "var(--fg)", fontSize: 14 }}>كيف يعمل؟</div>
+        <div style={{ display: "flex", gap: 20, justifyContent: "center", marginBottom: 14 }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 20, marginBottom: 4 }}>&#128194;</div>
+            <div style={{ fontSize: 24, marginBottom: 6 }}>&#128194;</div>
             <div>1. ارفع ملفات السيرفر</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 20, marginBottom: 4 }}>&#128269;</div>
+            <div style={{ fontSize: 24, marginBottom: 6 }}>&#128269;</div>
             <div>2. يُحلل تلقائياً</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 20, marginBottom: 4 }}>&#9889;</div>
+            <div style={{ fontSize: 24, marginBottom: 6 }}>&#9889;</div>
             <div>3. احصل على النتائج</div>
           </div>
         </div>
-        <div>تدعم جميع أنواع الملفات: <span style={{ color: "var(--fg)" }}>.lua .cfg .js .txt</span> والمجلدات الكاملة</div>
+        <div>تدعم جميع أنواع الملفات: <span style={{ color: "var(--fg)", fontWeight: 600 }}>.lua .cfg .js .txt</span> والمجلدات الكاملة</div>
       </div>
     </div>
   );
