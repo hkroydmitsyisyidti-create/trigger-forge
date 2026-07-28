@@ -183,7 +183,6 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const [searchW, setSearchW] = useState("");
   const [searchT, setSearchT] = useState("");
   const [itemCategory, setItemCategory] = useState("all");
-  const [fwFilter, setFwFilter] = useState<Framework | "all">("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
@@ -312,16 +311,10 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   }, [allItemFiles, searchW, itemCategory]);
 
   const filteredTriggers = useMemo(() => {
-    let items = triggerData;
-    if (searchT.trim()) {
-      const q = searchT.toLowerCase();
-      items = items.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.name.toLowerCase().includes(q)));
-    }
-    if (fwFilter !== "all") {
-      items = items.filter((t) => t.events.some((e) => e.framework === fwFilter));
-    }
-    return items;
-  }, [triggerData, searchT, fwFilter]);
+    if (!searchT.trim()) return triggerData;
+    const q = searchT.toLowerCase();
+    return triggerData.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.name.toLowerCase().includes(q)));
+  }, [triggerData, searchT]);
 
   useEffect(() => { if (selTrigger >= filteredTriggers.length) setSelTrigger(0); }, [filteredTriggers.length, selTrigger]);
 
@@ -428,52 +421,20 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             </div>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", background: "rgba(249,115,22,0.04)", direction: "rtl" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ color: "var(--ember)", fontWeight: 700, fontSize: 12 }}>Events ({filteredTriggers.length})</span>
-                  <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => { setSearchT(e.target.value); setSelTrigger(0); }}
-                    style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
-                  <button onClick={() => fileInputRef.current?.click()} style={{
-                    width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
-                    background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.25)", borderRadius: 6,
-                    color: "var(--ember)", fontSize: 16, cursor: "pointer", flexShrink: 0,
-                  }} title="إضافة ملفات">+</button>
-                  <button onClick={() => {
-                    let text = "";
-                    filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((e) => { text += `  ${e.type}("${e.name}")  [${FRAMEWORK_LABELS[e.framework]}]\n`; }); text += "\n"; });
-                    navigator.clipboard.writeText(text);
-                  }} style={{ fontSize: 10, padding: "4px 10px", background: "linear-gradient(135deg, var(--fire-dark), var(--fire))", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>نسخ الكل</button>
-                </div>
-                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                  <button onClick={() => setFwFilter("all")} style={{
-                    padding: "3px 10px", borderRadius: 12, fontSize: 10, fontWeight: 600,
-                    cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
-                    background: fwFilter === "all" ? "rgba(249,115,22,0.15)" : "var(--glass)",
-                    border: `1px solid ${fwFilter === "all" ? "rgba(249,115,22,0.4)" : "var(--border)"}`,
-                    color: fwFilter === "all" ? "var(--ember)" : "var(--muted)",
-                  }}>الكل</button>
-                  {(["esx", "vrp", "respect", "mt", "1b-core", "m3", "rt"] as Framework[]).map((fw) => {
-                    const isActive = fwFilter === fw;
-                    const isWhite = fw === "1b-core";
-                    const isRtPurple = fw === "rt";
-                    const bg = isActive
-                      ? (isWhite ? "rgba(255,255,255,0.15)" : isRtPurple ? "rgba(139,92,246,0.2)" : `${FRAMEWORK_COLORS[fw]}20`)
-                      : "var(--glass)";
-                    const borderC = isActive
-                      ? (isWhite ? "rgba(255,255,255,0.4)" : isRtPurple ? "rgba(139,92,246,0.5)" : `${FRAMEWORK_COLORS[fw]}50`)
-                      : "var(--border)";
-                    const textColor = isActive
-                      ? (isWhite ? "#ffffff" : isRtPurple ? "#8b5cf6" : FRAMEWORK_COLORS[fw])
-                      : "var(--muted)";
-                    return (
-                      <button key={fw} onClick={() => setFwFilter(fw)} style={{
-                        padding: "3px 10px", borderRadius: 12, fontSize: 10, fontWeight: 600,
-                        cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
-                        background: bg, border: `1px solid ${borderC}`, color: textColor,
-                      }}>{FRAMEWORK_LABELS[fw]}</button>
-                    );
-                  })}
-                </div>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(249,115,22,0.04)", direction: "rtl" }}>
+                <span style={{ color: "var(--ember)", fontWeight: 700, fontSize: 12 }}>Events ({filteredTriggers.length})</span>
+                <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => { setSearchT(e.target.value); setSelTrigger(0); }}
+                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
+                <button onClick={() => fileInputRef.current?.click()} style={{
+                  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.25)", borderRadius: 6,
+                  color: "var(--ember)", fontSize: 16, cursor: "pointer", flexShrink: 0,
+                }} title="إضافة ملفات">+</button>
+                <button onClick={() => {
+                  let text = "";
+                  filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((e) => { text += `  ${e.type}("${e.name}")\n`; }); text += "\n"; });
+                  navigator.clipboard.writeText(text);
+                }} style={{ fontSize: 10, padding: "4px 10px", background: "linear-gradient(135deg, var(--fire-dark), var(--fire))", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>نسخ الكل</button>
               </div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                 <div style={{ width: 160, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
@@ -617,11 +578,11 @@ function ItemGridItem({ file }: { file: LoadedFile }) {
 }
 
 function TriggerDetail({ item }: { item: { file: LoadedFile; events: TriggerEvent[] } }) {
-  const frameworkGroups = item.events.reduce((acc, e) => {
-    if (!acc[e.framework]) acc[e.framework] = [];
-    acc[e.framework].push(e);
+  const dominantFw = item.events.reduce((acc, e) => {
+    acc[e.framework] = (acc[e.framework] || 0) + 1;
     return acc;
-  }, {} as Record<Framework, TriggerEvent[]>);
+  }, {} as Record<string, number>);
+  const topFw = Object.entries(dominantFw).sort((a, b) => b[1] - a[1])[0]?.[0] as Framework || "other";
 
   const typeBadge: Record<string, string> = {
     "TriggerServerEvent": "TSE",
@@ -665,50 +626,42 @@ function TriggerDetail({ item }: { item: { file: LoadedFile; events: TriggerEven
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ember)" }}>{item.file.name}</div>
-          <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.events.length} Event</div>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>Event {item.events.length}</div>
+        </div>
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "4px 10px", borderRadius: 8,
+          background: "var(--glass)", border: "1px solid var(--border)",
+          fontSize: 10, fontWeight: 600, color: FRAMEWORK_COLORS[topFw],
+        }}>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: FRAMEWORK_COLORS[topFw] }} />
+          {FRAMEWORK_LABELS[topFw]}
         </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {Object.entries(frameworkGroups).map(([fw, events]) => (
-          <div key={fw}>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              padding: "4px 10px", borderRadius: 8, marginBottom: 6,
-              background: `${FRAMEWORK_COLORS[fw as Framework]}15`,
-              border: `1px solid ${FRAMEWORK_COLORS[fw as Framework]}30`,
-              fontSize: 11, fontWeight: 700, color: FRAMEWORK_COLORS[fw as Framework],
-            }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: FRAMEWORK_COLORS[fw as Framework] }} />
-              {FRAMEWORK_LABELS[fw as Framework]}
-              <span style={{ fontSize: 9, opacity: 0.7 }}>({events.length})</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {events.map((e, i) => (
-                <div key={i} style={{
-                  padding: "8px 12px", background: "var(--glass)", borderRadius: 8,
-                  border: "1px solid var(--border)", direction: "ltr", textAlign: "left",
-                  display: "flex", alignItems: "center", gap: 8,
-                }}>
-                  <span style={{
-                    fontSize: 9, fontWeight: 700, color: "#fff",
-                    background: typeColors[e.type] || "var(--fire-dark)",
-                    padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap",
-                  }}>{typeBadge[e.type] || e.type.slice(0, 3).toUpperCase()}</span>
-                  <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--flame)", flex: 1 }}>
-                    <span style={{ color: "var(--muted)" }}>{e.type}(</span>"<span style={{ color: "var(--green)" }}>{e.name}</span>"<span style={{ color: "var(--muted)" }}>)</span>
-                  </span>
-                  <span style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(`${e.type}("${e.name}")`)}
-                    style={{ fontSize: 9, padding: "3px 8px", background: "var(--glass2)", color: "var(--fg)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
-                    title="نسخ"
-                  >نسخ</button>
-                </div>
-              ))}
-            </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {item.events.map((e, i) => (
+          <div key={i} style={{
+            padding: "8px 12px", background: "var(--glass)", borderRadius: 8,
+            border: "1px solid var(--border)", direction: "ltr", textAlign: "left",
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+            <span style={{
+              fontSize: 9, fontWeight: 700, color: "#fff",
+              background: typeColors[e.type] || "var(--fire-dark)",
+              padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap",
+            }}>{typeBadge[e.type] || e.type.slice(0, 3).toUpperCase()}</span>
+            <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--flame)", flex: 1 }}>
+              <span style={{ color: "var(--muted)" }}>{e.type}(</span>"<span style={{ color: "var(--green)" }}>{e.name}</span>"<span style={{ color: "var(--muted)" }}>)</span>
+            </span>
+            <span style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
+            <button
+              onClick={() => navigator.clipboard.writeText(`${e.type}("${e.name}")`)}
+              style={{ fontSize: 9, padding: "3px 8px", background: "var(--glass2)", color: "var(--fg)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
+              title="نسخ"
+            >نسخ</button>
           </div>
         ))}
       </div>
