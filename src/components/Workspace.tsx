@@ -39,14 +39,6 @@ function extractWeaponName(filename: string): string {
   return name;
 }
 
-function formatSize(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-}
-
 interface LoadedFile {
   name: string;
   content: string;
@@ -280,21 +272,16 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                   color: "var(--yellow)", fontSize: 14, cursor: "pointer", flexShrink: 0,
                 }} title="إضافة ملفات">+</button>
               </div>
-              <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                <div style={{ width: 180, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
-                  {filteredWeapons.length === 0 ? (
-                    <div style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 10 }}>لا توجد أسلحة</div>
-                  ) : filteredWeapons.map((f, i) => (
-                    <WeaponListItem key={f.name + i} file={f} isSelected={selWeapon === i} onClick={() => setSelWeapon(i)} />
-                  ))}
-                </div>
-                <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {filteredWeapons[selWeapon] ? (
-                    <WeaponPreview file={filteredWeapons[selWeapon]} />
-                  ) : (
-                    <div style={{ color: "var(--muted)", fontSize: 11 }}>اختر سلاح</div>
-                  )}
-                </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
+                {filteredWeapons.length === 0 ? (
+                  <div style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 10 }}>لا توجد أسلحة</div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 8 }}>
+                    {filteredWeapons.map((f, i) => (
+                      <WeaponGridItem key={f.name + i} file={f} isSelected={selWeapon === i} onClick={() => setSelWeapon(i)} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -373,7 +360,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   );
 }
 
-function WeaponListItem({ file, isSelected, onClick }: { file: LoadedFile; isSelected: boolean; onClick: () => void }) {
+function WeaponGridItem({ file, isSelected, onClick }: { file: LoadedFile; isSelected: boolean; onClick: () => void }) {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const weaponName = extractWeaponName(file.name);
 
@@ -387,41 +374,24 @@ function WeaponListItem({ file, isSelected, onClick }: { file: LoadedFile; isSel
 
   return (
     <div onClick={onClick} style={{
-      padding: "6px 8px", cursor: "pointer", fontSize: 10,
-      borderBottom: "1px solid var(--border)",
-      background: isSelected ? "rgba(234,179,8,0.1)" : "transparent",
-      borderLeft: isSelected ? "2px solid var(--yellow)" : "2px solid transparent",
-      display: "flex", alignItems: "center", gap: 8,
+      padding: 6, cursor: "pointer",
+      background: isSelected ? "rgba(234,179,8,0.12)" : "rgba(255,255,255,0.02)",
+      border: isSelected ? "1px solid rgba(234,179,8,0.4)" : "1px solid var(--border)",
+      borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+      transition: "all 0.15s",
     }}>
-      {imgUrl && (
-        <img src={imgUrl} alt="" style={{
-          width: 32, height: 32, objectFit: "contain",
-          borderRadius: 4, background: "var(--bg3)", flexShrink: 0,
-          border: "1px solid var(--border)",
-        }} />
+      {imgUrl ? (
+        <img src={imgUrl} alt="" style={{ width: 60, height: 60, objectFit: "contain", borderRadius: 4 }} />
+      ) : (
+        <div style={{ width: 60, height: 60, borderRadius: 4, background: "var(--bg3)" }} />
       )}
-      <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div style={{
+        fontSize: 9, fontWeight: 500, color: isSelected ? "var(--yellow)" : "var(--fg)",
+        textAlign: "center", overflow: "hidden", textOverflow: "ellipsis",
+        whiteSpace: "nowrap", width: "100%",
+      }}>
         {weaponName}
       </div>
-    </div>
-  );
-}
-
-function WeaponPreview({ file }: { file: LoadedFile }) {
-  const [imgUrl, setImgUrl] = useState<string | null>(null);
-  const weaponName = extractWeaponName(file.name);
-  useEffect(() => {
-    if (file.rawFile) {
-      const url = URL.createObjectURL(file.rawFile);
-      setImgUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-  }, [file.rawFile]);
-  return (
-    <div style={{ textAlign: "center" }}>
-      {imgUrl && <div style={{ marginBottom: 12 }}><img src={imgUrl} alt={weaponName} style={{ width: 150, height: 150, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)" }} /></div>}
-      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--yellow)", marginBottom: 4 }}>{weaponName}</div>
-      <div style={{ fontSize: 10, color: "var(--muted)" }}>{formatSize(file.size)}</div>
     </div>
   );
 }
