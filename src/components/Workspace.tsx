@@ -204,7 +204,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
       <div className="main-window">
         <nav className="top-nav">
           <div className="tl">
-            <div className="brand-mark">&#9655;</div>
+            <div className="brand-mark"><img src="/favicon.svg" alt="TF" /></div>
             <div className="brand-text">Trigger Forge</div>
           </div>
           <div className="tc">

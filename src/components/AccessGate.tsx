@@ -33,9 +33,7 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
     <div className={`gate ${loaded ? "gate-visible" : ""}`}>
       <div className="gate-card">
         <div className="gate-mark">
-          <svg className="mark" viewBox="0 0 24 24" fill="none">
-            <path d="M13.5 2L3 14h9l-1.5 8L21 10h-9l1.5-8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="rgba(239,68,68,0.15)" />
-          </svg>
+          <img src="/favicon.svg" alt="TF" style={{ width: 44, height: 44 }} />
         </div>
         <h2>Trigger Forge</h2>
         <p className="subtitle">أداة تحليل سكربتات FiveM الاحترافية</p>

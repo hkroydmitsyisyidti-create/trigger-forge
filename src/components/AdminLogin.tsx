@@ -42,7 +42,9 @@ export default function AdminLogin({ onLogin, onClose }: { onLogin: () => void; 
   return (
     <div className="gate">
       <div className="gate-card">
-        <div className="gate-mark admin-icon">&#128737;&#65039;</div>
+        <div className="gate-mark admin-icon">
+          <img src="/favicon.svg" alt="TF" style={{ width: 44, height: 44 }} />
+        </div>
         <h2>لوحة الإدارة</h2>
         <p className="subtitle">للمسؤلين فقط</p>
         <form onSubmit={handleSubmit} autoComplete="off">
