@@ -29,6 +29,9 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const [files, setFiles] = useState<LoadedFile[]>([]);
   const [dragging, setDragging] = useState(0);
   const [showReport, setShowReport] = useState<LoadedFile[] | null>(null);
+  const [showPaste, setShowPaste] = useState(false);
+  const [pasteCode, setPasteCode] = useState("");
+  const [pasteFileName, setPasteFileName] = useState("script.lua");
   const consoleEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
@@ -110,43 +113,52 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
     fileList.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const buffer = ev.target?.result as ArrayBuffer;
-        const uint8 = new Uint8Array(buffer);
-        const fileType = detectFileType(file.name, uint8);
-        const strings = extractStrings(uint8);
-
         let content: string;
         let isBinary = false;
 
-        if (uint8.length === 0) {
-          content = "[Empty file]";
-          isBinary = true;
-        } else {
-          try {
-            content = new TextDecoder("utf-8").decode(uint8);
-          } catch {
-            content = strings.join("\n") || "[Cannot decode file]";
-            isBinary = true;
-          }
+        try {
+          const result = ev.target?.result;
+          if (typeof result === "string") {
+            content = result;
+          } else if (result instanceof ArrayBuffer) {
+            const uint8 = new Uint8Array(result);
+            const strings = extractStrings(uint8);
 
-          if (!isBinary && content.includes("\0")) {
+            if (uint8.length === 0) {
+              content = "[Empty file]";
+              isBinary = true;
+            } else {
+              try {
+                content = new TextDecoder("utf-8").decode(uint8);
+              } catch {
+                content = strings.join("\n") || "[Cannot decode file]";
+                isBinary = true;
+              }
+              if (!isBinary && content.includes("\0")) {
+                isBinary = true;
+                content = strings.join("\n") || content;
+              }
+            }
+          } else {
+            content = "[无法读取文件]";
             isBinary = true;
-            content = strings.join("\n") || content;
           }
+        } catch {
+          content = "[فشل في قراءة الملف]";
+          isBinary = true;
         }
 
         const f: LoadedFile = {
           name: file.name,
           content,
-          size: file.size,
-          fileType,
+          size: file.size || content.length,
+          fileType: detectFileType(file.name, new Uint8Array(0)),
           isBinary,
-          strings: isBinary ? strings : undefined,
         };
         newFiles.push(f);
         loaded++;
         setFiles((prev) => [...prev, f]);
-        addEntry("success", `تم التحميل: ${file.name} (${(file.size / 1024).toFixed(1)}KB) [${fileType}]`);
+        addEntry("success", `تم التحميل: ${file.name} (${((file.size || content.length) / 1024).toFixed(1)}KB)`);
         if (loaded === fileList.length) {
           setShowReport(newFiles);
         }
@@ -155,7 +167,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
         const f: LoadedFile = {
           name: file.name,
           content: "[فشل في قراءة الملف]",
-          size: file.size,
+          size: 0,
           fileType: "Unknown",
           isBinary: true,
           strings: [],
@@ -168,13 +180,34 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           setShowReport(newFiles);
         }
       };
-      reader.readAsArrayBuffer(file);
+
+      if (file.size > 0) {
+        reader.readAsText(file, "utf-8");
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
     });
   };
 
   const removeFile = (name: string) => {
     setFiles((prev) => prev.filter((f) => f.name !== name));
     addEntry("info", `تم الإزالة: ${name}`);
+  };
+
+  const handlePaste = () => {
+    if (!pasteCode.trim()) return;
+    const f: LoadedFile = {
+      name: pasteFileName || "pasted-code.txt",
+      content: pasteCode,
+      size: pasteCode.length,
+      fileType: detectFileType(pasteFileName || "pasted-code.txt", new Uint8Array(0)),
+      isBinary: false,
+    };
+    setFiles((prev) => [...prev, f]);
+    setShowReport([f]);
+    addEntry("success", `تم تحليل الكود المُلصق (${(pasteCode.length / 1024).toFixed(1)}KB)`);
+    setShowPaste(false);
+    setPasteCode("");
   };
 
   const filteredEntries = entries.filter((e) => filter ? e.text.toLowerCase().includes(filter.toLowerCase()) : true);
@@ -308,6 +341,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
 
       <div className="bottom-bar">
         <button type="button" className="bbtn" title="إجراءات سريعة">&#9776;</button>
+        <button type="button" className="bbtn" title="لصق كود" onClick={() => setShowPaste(true)}>&#128203;</button>
         <button type="button" className="bbtn" title="تحميل الملفات" onClick={() => fileInputRef.current?.click()}>&#128194;</button>
         <div className="bsp" />
         <span className="console-status"><span className={`console-dot ${statusDot}`} /><span>{status}</span></span>
@@ -320,6 +354,55 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
       </div>
 
       <input ref={fileInputRef} type="file" className="hidden-file" multiple onChange={handleFileInput} />
+
+      {showPaste && (
+        <div className="modal-overlay" onClick={() => setShowPaste(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>لصق كود للتحليل</h3>
+              <button className="modal-close" onClick={() => setShowPaste(false)}>&times;</button>
+            </div>
+            <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <label style={{ color: "var(--fg)", fontSize: 13, alignSelf: "center" }}>اسم الملف:</label>
+                <input
+                  type="text"
+                  value={pasteFileName}
+                  onChange={(e) => setPasteFileName(e.target.value)}
+                  className="bb-input"
+                  style={{ flex: 1 }}
+                  placeholder="script.lua"
+                  spellCheck={false}
+                />
+              </div>
+              <textarea
+                value={pasteCode}
+                onChange={(e) => setPasteCode(e.target.value)}
+                placeholder="الصق الكود هنا... (TriggerServerEvent, TriggerClientEvent, RegisterNetEvent...)"
+                style={{
+                  width: "100%",
+                  minHeight: 300,
+                  background: "var(--bg)",
+                  color: "var(--fg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: 12,
+                  fontFamily: "monospace",
+                  fontSize: 13,
+                  resize: "vertical",
+                  direction: "ltr",
+                }}
+                spellCheck={false}
+                autoFocus
+              />
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button className="admin-abtn" onClick={() => setShowPaste(false)}>إلغاء</button>
+                <button className="admin-abtn gr" onClick={handlePaste} disabled={!pasteCode.trim()}>تحليل الكود</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showReport && (
         <FileReportModal files={showReport} onClose={() => setShowReport(null)} />
