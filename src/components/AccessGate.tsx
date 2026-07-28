@@ -39,9 +39,9 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
         <p className="subtitle">أداة تحليل سكربتات FiveM الاحترافية</p>
 
         <div className="features">
-          <div className="feature-tag"><span>&#9889;</span> كشف TriggerServerEvent</div>
-          <div className="feature-tag"><span>&#128299;</span> تحليل الأسلحة</div>
-          <div className="feature-tag"><span>&#128269;</span> فحص شامل</div>
+          <div className="feature-tag">كشف TriggerServerEvent</div>
+          <div className="feature-tag">تحليل الأسلحة</div>
+          <div className="feature-tag">فحص شامل</div>
         </div>
 
         <form onSubmit={handleSubmit} autoComplete="off">
@@ -65,15 +65,15 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
         <div style={{ marginBottom: 10, fontWeight: 700, color: "var(--fg)", fontSize: 14 }}>كيف يعمل؟</div>
         <div style={{ display: "flex", gap: 20, justifyContent: "center", marginBottom: 14 }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 24, marginBottom: 6 }}>&#128194;</div>
+            <div style={{ fontSize: 24, marginBottom: 6 }}></div>
             <div>1. ارفع ملفات السيرفر</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 24, marginBottom: 6 }}>&#128269;</div>
+            <div style={{ fontSize: 24, marginBottom: 6 }}></div>
             <div>2. يُحلل تلقائياً</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 24, marginBottom: 6 }}>&#9889;</div>
+            <div style={{ fontSize: 24, marginBottom: 6 }}></div>
             <div>3. احصل على النتائج</div>
           </div>
         </div>

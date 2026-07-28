@@ -129,7 +129,7 @@ export default function FileReportModal({ files, onClose }: Props) {
 
           <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)" }}>
             <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, direction: "rtl" }}>
-              <span style={{ color: "var(--yellow)", fontWeight: 700, fontSize: 12 }}>&#128299; أسلحة ({weaponData.length})</span>
+              <span style={{ color: "var(--yellow)", fontWeight: 700, fontSize: 12 }}>اسلحة ({weaponData.length})</span>
               <input
                 type="text"
                 placeholder="بحث..."
@@ -177,7 +177,7 @@ export default function FileReportModal({ files, onClose }: Props) {
 
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, direction: "rtl" }}>
-              <span style={{ color: "var(--red)", fontWeight: 700, fontSize: 12 }}>&#9889; TriggerServerEvent ({triggerData.length})</span>
+              <span style={{ color: "var(--red)", fontWeight: 700, fontSize: 12 }}>TriggerServerEvent ({triggerData.length})</span>
               <input
                 type="text"
                 placeholder="بحث..."
@@ -267,7 +267,6 @@ function TriggerDetail({ item }: { item: { file: LoadedFile; events: string[] } 
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-        <span style={{ fontSize: 16 }}>&#9889;</span>
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--red)" }}>{item.file.name}</div>
           <div style={{ fontSize: 10, color: "var(--muted)" }}>{item.events.length} TriggerServerEvent</div>

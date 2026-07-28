@@ -240,15 +240,15 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               boxShadow: "0 2px 16px rgba(239,68,68,0.3)",
               transition: "all 0.2s",
-            }}>&#128194; رفع ملفات</button>
+            }}>رفع ملفات</button>
             <button type="button" onClick={() => setShowPaste(true)} style={{
               display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
               background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)",
               borderRadius: 10, color: "var(--ember)",
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               transition: "all 0.2s",
-            }}>&#128203; لصق كود</button>
-            <button type="button" className="ti" title="الإدارة" onClick={onOpenAdmin}>&#9881;&#65039;</button>
+            }}>لصق كود</button>
+            <button type="button" className="ti" title="الإدارة" onClick={onOpenAdmin}>&#9881;</button>
           </div>
         </nav>
 
@@ -257,13 +257,13 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             <div className="wrap">
               <div className="canvas-area">
                 <div className="empty-state">
-                  <div className="empty-icon">&#128293;</div>
+                  <div className="empty-icon"></div>
                   <h3>ابدأ التحليل</h3>
                   <p>أسقط الملفات والمجلدات هنا</p>
                   <p className="empty-hint">يدعم جميع أنواع الملفات والمجلدات</p>
                   <div style={{ marginTop: 24, display: "flex", gap: 10, justifyContent: "center" }}>
-                    <button className="admin-abtn" onClick={() => setShowPaste(true)}>&#128203; لصق كود</button>
-                    <button className="admin-abtn" onClick={() => fileInputRef.current?.click()}>&#128194; رفع ملف</button>
+                    <button className="admin-abtn" onClick={() => setShowPaste(true)}>لصق كود</button>
+                    <button className="admin-abtn" onClick={() => fileInputRef.current?.click()}>رفع ملف</button>
                   </div>
                 </div>
               </div>
@@ -274,7 +274,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)" }}>
               <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(239,68,68,0.04)", direction: "rtl" }}>
-                <span style={{ color: "var(--fire)", fontWeight: 700, fontSize: 12 }}>&#128230; ايتمات ({filteredItems.length})</span>
+                <span style={{ color: "var(--fire)", fontWeight: 700, fontSize: 12 }}>ايتمات ({filteredItems.length})</span>
                 <input type="text" placeholder="بحث..." value={searchW} onChange={(e) => setSearchW(e.target.value)}
                   style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
                 <button onClick={() => fileInputRef.current?.click()} style={{
@@ -298,7 +298,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(249,115,22,0.04)", direction: "rtl" }}>
-                <span style={{ color: "var(--ember)", fontWeight: 700, fontSize: 12 }}>&#128293; TriggerServerEvent ({filteredTriggers.length})</span>
+                <span style={{ color: "var(--ember)", fontWeight: 700, fontSize: 12 }}>TriggerServerEvent ({filteredTriggers.length})</span>
                 <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => { setSearchT(e.target.value); setSelTrigger(0); }}
                   style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
                 <button onClick={() => fileInputRef.current?.click()} style={{
@@ -409,7 +409,7 @@ function ItemGridItem({ file }: { file: LoadedFile }) {
         zIndex: 2,
       }}
       onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-      >{copied ? "✓" : "📋"}</button>
+      >{copied ? "✓" : "cp"}</button>
       <div
         onMouseEnter={(e) => {
           const btn = e.currentTarget.parentElement?.querySelector("button") as HTMLButtonElement;
@@ -442,7 +442,6 @@ function TriggerDetail({ item }: { item: { file: LoadedFile; events: { name: str
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-        <span style={{ fontSize: 18 }}>&#128293;</span>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ember)" }}>{item.file.name}</div>
           <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.events.length} TriggerServerEvent</div>
