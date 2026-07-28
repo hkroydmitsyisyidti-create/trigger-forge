@@ -285,17 +285,11 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                 }} title="إضافة ملفات">+</button>
               </div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                <div style={{ width: 150, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
+                <div style={{ width: 180, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
                   {filteredWeapons.length === 0 ? (
                     <div style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 10 }}>لا توجد أسلحة</div>
                   ) : filteredWeapons.map((f, i) => (
-                    <div key={f.name + i} onClick={() => setSelWeapon(i)} style={{
-                      padding: "5px 8px", cursor: "pointer", fontSize: 10, borderBottom: "1px solid var(--border)",
-                      background: selWeapon === i ? "rgba(234,179,8,0.1)" : "transparent",
-                      borderLeft: selWeapon === i ? "2px solid var(--yellow)" : "2px solid transparent",
-                    }}>
-                      <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{extractWeaponName(f.name)}</div>
-                    </div>
+                    <WeaponListItem key={f.name + i} file={f} isSelected={selWeapon === i} onClick={() => setSelWeapon(i)} />
                   ))}
                 </div>
                 <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -380,6 +374,40 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
       )}
 
       {showReport && <FileReportModal files={showReport} onClose={() => setShowReport(null)} />}
+    </div>
+  );
+}
+
+function WeaponListItem({ file, isSelected, onClick }: { file: LoadedFile; isSelected: boolean; onClick: () => void }) {
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const weaponName = extractWeaponName(file.name);
+
+  useEffect(() => {
+    if (file.rawFile) {
+      const url = URL.createObjectURL(file.rawFile);
+      setImgUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [file.rawFile]);
+
+  return (
+    <div onClick={onClick} style={{
+      padding: "6px 8px", cursor: "pointer", fontSize: 10,
+      borderBottom: "1px solid var(--border)",
+      background: isSelected ? "rgba(234,179,8,0.1)" : "transparent",
+      borderLeft: isSelected ? "2px solid var(--yellow)" : "2px solid transparent",
+      display: "flex", alignItems: "center", gap: 8,
+    }}>
+      {imgUrl && (
+        <img src={imgUrl} alt="" style={{
+          width: 32, height: 32, objectFit: "contain",
+          borderRadius: 4, background: "var(--bg3)", flexShrink: 0,
+          border: "1px solid var(--border)",
+        }} />
+      )}
+      <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {weaponName}
+      </div>
     </div>
   );
 }
