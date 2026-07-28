@@ -9,6 +9,14 @@ interface TriggerEvent {
   raw: string;
   framework: Framework;
   type: string;
+  category: string;
+}
+
+interface ThreadInfo {
+  name: string;
+  line: number;
+  raw: string;
+  framework: Framework;
 }
 
 function detectFramework(name: string, content: string): Framework {
@@ -23,7 +31,20 @@ function detectFramework(name: string, content: string): Framework {
   return "other";
 }
 
-function extractServerEvents(content: string, fileName: string): TriggerEvent[] {
+function detectItemCategory(eventLine: string): string {
+  const lower = eventLine.toLowerCase();
+  if (/weapon|gun|pistol|rifle|shotgun|smg|sniper|knife|ammo|magazine|silencer|carbine|revolver|grenade|bat|axe|machete/.test(lower)) return "weapons";
+  if (/food|bread|meat|apple|banana|chicken|burger|pizza|sandwich|taco|rice|egg|steak|fries|nugget|salad|soup|cookie|cake|fruit|orange|grape|melon|cherry|mango|pineapple|avocado|carrot|potato|tomato|corn|onion|mushroom|peanut|bean|broccoli|cabbage|lettuce|cucumber|pepper|garlic|ginger|salt|sugar|flour|butter|oil|sauce|ketchup|honey|jam|cream|bacon|ham|sausage|toast|cereal|oat|waffle|pancake|popcorn|icecream|chocolate|candy|donut|hotdog|sushi|noodle|pasta|spaghetti|rice|steak|fish|shrimp|crab|lobster|kebab|shawarma|falafel|hummus|tahini|foul|manakish|zaatar/.test(lower)) return "food";
+  if (/drink|water|beer|wine|vodka|whiskey|juice|soda|coffee|tea|cola|energy|sprunk|ecola|egs|milkshake|smoothie|lemonade|juice|espresso|latte|cappuccino/.test(lower)) return "drinks";
+  if (/vehicle|car|suv|truck|bike|motorcycle|boat|helicopter|plane|bus|van|bicycle|garage|spawn|drive/.test(lower)) return "vehicles";
+  if (/med|bandage|health|pill|syringe|pharmaceutical|firstaid|medicine|morphine|antibiotic|vitamin|cure|heal|painkiller|prescription|drug|capsule|tablet|ointment|cream|inhaler|defibrillator|paramedic|ambulance/.test(lower)) return "medical";
+  if (/tool|lockpick|repair|wrench|screwdriver|hammer|drill|pliers|soldering|battery|flashlight|torch|radio|laptop|computer|camera|tracker|detector|electric|wire|cable|fuse/.test(lower)) return "tools";
+  if (/document|paper|license|passport|id_card|certificate|ticket|receipt|note|letter|contract|permit|voucher|diploma|badge|stamp|envelope|billing|invoice/.test(lower)) return "documents";
+  if (/animal|dog|cat|horse|bird|fish|rabbit|bear|wolf|deer|lion|tiger|monkey|cow|pig|sheep|chicken|duck|goat|fox|hawk|eagle|snake|turtle|frog|pet|feed/.test(lower)) return "animals";
+  return "other";
+}
+
+function extractTriggers(content: string, fileName: string): TriggerEvent[] {
   const events: TriggerEvent[] = [];
   const seen = new Set<string>();
   const lines = content.split("\n");
@@ -31,26 +52,11 @@ function extractServerEvents(content: string, fileName: string): TriggerEvent[] 
   const patterns: { re: RegExp; type: string }[] = [
     { re: /TriggerServerEvent\s*\(\s*['"]([^'"]+)['"]/g, type: "TriggerServerEvent" },
     { re: /TriggerClientEvent\s*\(\s*['"]([^'"]+)['"]/g, type: "TriggerClientEvent" },
-    { re: /RegisterNetEvent\s*\(\s*['"]([^'"]+)['"]/g, type: "RegisterNetEvent" },
-    { re: /AddEventHandler\s*\(\s*['"]([^'"]+)['"]/g, type: "AddEventHandler" },
     { re: /TriggerEvent\s*\(\s*['"]([^'"]+)['"]/g, type: "TriggerEvent" },
-    { re: /TriggerServerEvent\s*\(\s*([a-zA-Z_][\w.]*)/g, type: "TriggerServerEvent" },
-    { re: /TriggerClientEvent\s*\(\s*([a-zA-Z_][\w.]*)/g, type: "TriggerClientEvent" },
-    { re: /RegisterNetEvent\s*\(\s*([a-zA-Z_][\w.]*)/g, type: "RegisterNetEvent" },
-    { re: /AddEventHandler\s*\(\s*([a-zA-Z_][\w.]*)/g, type: "AddEventHandler" },
-    { re: /TriggerEvent\s*\(\s*([a-zA-Z_][\w.]*)/g, type: "TriggerEvent" },
-    { re: /exports\s*\[\s*['"]([^'"]+)['"]\s*\]\s*\.\s*(\w+)/g, type: "Export" },
     { re: /TriggerServerCallback\s*\(\s*['"]([^'"]+)['"]/g, type: "Callback" },
     { re: /ESX\.TriggerServerCallback\s*\(\s*['"]([^'"]+)['"]/g, type: "ESX Callback" },
-    { re: /ESX\.GetServerConfig\s*\(\s*['"]([^'"]+)['"]/g, type: "ESX Config" },
     { re: /vRP\s*\.\s*server\s*\.\s*["']([^'"]+)["']/g, type: "vRP Call" },
-    { re: /vRPC\s*\.\s*["']([^'"]+)["']/g, type: "vRPC Call" },
-    { re: /mysql\.async\.fetch\s*\(\s*['"]([^'"]+)['"]/g, type: "MySQL Fetch" },
-    { re: /mysql\.async\.execute\s*\(\s*['"]([^'"]+)['"]/g, type: "MySQL Execute" },
-    { re: /oxmysql\s*\.\s*["']([^'"]+)["']/g, type: "oxMySQL" },
-    { re: /MySQL\.update\s*\(\s*['"]([^'"]+)['"]/g, type: "MySQL Update" },
-    { re: /MySQL\.insert\s*\(\s*['"]([^'"]+)['"]/g, type: "MySQL Insert" },
-    { re: /MySQL\.query\s*\(\s*['"]([^'"]+)['"]/g, type: "MySQL Query" },
+    { re: /exports\s*\[\s*['"]([^'"]+)['"]\s*\]\s*\.\s*(\w+)/g, type: "Export" },
   ];
 
   lines.forEach((line, idx) => {
@@ -64,7 +70,8 @@ function extractServerEvents(content: string, fileName: string): TriggerEvent[] 
           if (!seen.has(key)) {
             seen.add(key);
             const framework = detectFramework(fileName, line);
-            events.push({ name, line: idx + 1, raw: line.trim(), framework, type: p.type });
+            const category = detectItemCategory(line);
+            events.push({ name, line: idx + 1, raw: line.trim(), framework, type: p.type, category });
           }
         }
       }
@@ -72,6 +79,38 @@ function extractServerEvents(content: string, fileName: string): TriggerEvent[] 
   });
 
   return events;
+}
+
+function extractThreads(content: string, fileName: string): ThreadInfo[] {
+  const threads: ThreadInfo[] = [];
+  const seen = new Set<string>();
+  const lines = content.split("\n");
+
+  const threadPatterns: { re: RegExp; name: string }[] = [
+    { re: /Citizen\.CreateThread\s*\(\s*(?:function\s*\(\s*\)|\(\s*function\s*\(\s*\))/g, name: "Citizen.CreateThread" },
+    { re: /CreateThread\s*\(\s*(?:function\s*\(\s*\)|\(\s*function\s*\(\s*\))/g, name: "CreateThread" },
+    { re: /Citizen\.CreateThreadNow\s*\(/g, name: "Citizen.CreateThreadNow" },
+    { re: /CreateThreadNow\s*\(/g, name: "CreateThreadNow" },
+    { re: /AddEventHandler\s*\(\s*['"]([^'"]+)['"]/g, name: "" },
+    { re: /RegisterNetEvent\s*\(\s*['"]([^'"]+)['"]/g, name: "" },
+  ];
+
+  lines.forEach((line, idx) => {
+    for (const p of threadPatterns) {
+      p.re.lastIndex = 0;
+      let m;
+      while ((m = p.re.exec(line)) !== null) {
+        const eventName = m[1] || p.name || "thread";
+        if (!seen.has(`${eventName}:${idx}`)) {
+          seen.add(`${eventName}:${idx}`);
+          const framework = detectFramework(fileName, line);
+          threads.push({ name: eventName, line: idx + 1, raw: line.trim(), framework });
+        }
+      }
+    }
+  });
+
+  return threads;
 }
 
 function isValidEventName(name: string): boolean {
@@ -182,6 +221,8 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const [itemCategory, setItemCategory] = useState("all");
   const [searchW, setSearchW] = useState("");
   const [searchT, setSearchT] = useState("");
+  const [triggerCategory, setTriggerCategory] = useState("all");
+  const [triggerTab, setTriggerTab] = useState<"triggers" | "threads">("triggers");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
@@ -288,8 +329,17 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const triggerData = useMemo(() => {
     const items: { file: LoadedFile; events: TriggerEvent[] }[] = [];
     for (const f of files) {
-      const events = extractServerEvents(f.content, f.name);
+      const events = extractTriggers(f.content, f.name);
       if (events.length > 0) items.push({ file: f, events });
+    }
+    return items;
+  }, [files]);
+
+  const threadData = useMemo(() => {
+    const items: { file: LoadedFile; threads: ThreadInfo[] }[] = [];
+    for (const f of files) {
+      const threads = extractThreads(f.content, f.name);
+      if (threads.length > 0) items.push({ file: f, threads });
     }
     return items;
   }, [files]);
@@ -310,10 +360,25 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   }, [allItemFiles, searchW, itemCategory]);
 
   const filteredTriggers = useMemo(() => {
-    if (!searchT.trim()) return triggerData;
+    let items = triggerData;
+    if (searchT.trim()) {
+      const q = searchT.toLowerCase();
+      items = items.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.name.toLowerCase().includes(q)));
+    }
+    if (triggerCategory !== "all") {
+      items = items.map((t) => ({
+        ...t,
+        events: t.events.filter((e) => e.category === triggerCategory),
+      })).filter((t) => t.events.length > 0);
+    }
+    return items;
+  }, [triggerData, searchT, triggerCategory]);
+
+  const filteredThreads = useMemo(() => {
+    if (!searchT.trim()) return threadData;
     const q = searchT.toLowerCase();
-    return triggerData.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.name.toLowerCase().includes(q)));
-  }, [triggerData, searchT]);
+    return threadData.filter((t) => t.file.name.toLowerCase().includes(q) || t.threads.some((th) => th.name.toLowerCase().includes(q)));
+  }, [threadData, searchT]);
 
   const hasFiles = files.length > 0;
   const statusDot = status === "جاهز" ? "dot-green" : status === "يعمل" ? "dot-yellow" : "dot-red";
@@ -418,81 +483,177 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             </div>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(249,115,22,0.04)", direction: "rtl" }}>
-                <span style={{ color: "var(--ember)", fontWeight: 700, fontSize: 12 }}>Events ({filteredTriggers.length})</span>
-                <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => setSearchT(e.target.value)}
-                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
-                <button onClick={() => fileInputRef.current?.click()} style={{
-                  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.25)", borderRadius: 6,
-                  color: "var(--ember)", fontSize: 16, cursor: "pointer", flexShrink: 0,
-                }} title="إضافة ملفات">+</button>
-                <button onClick={() => {
-                  let text = "";
-                  filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((e) => { text += `  ${e.type}("${e.name}")\n`; }); text += "\n"; });
-                  navigator.clipboard.writeText(text);
-                }} style={{ fontSize: 10, padding: "4px 10px", background: "linear-gradient(135deg, var(--fire-dark), var(--fire))", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>نسخ الكل</button>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", background: "rgba(249,115,22,0.04)", direction: "rtl" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <div style={{ display: "flex", gap: 2, background: "var(--glass)", borderRadius: 8, padding: 2, border: "1px solid var(--border)" }}>
+                    <button onClick={() => setTriggerTab("triggers")} style={{
+                      padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      cursor: "pointer", transition: "all 0.2s",
+                      background: triggerTab === "triggers" ? "rgba(249,115,22,0.15)" : "transparent",
+                      color: triggerTab === "triggers" ? "var(--ember)" : "var(--muted)",
+                      border: "none",
+                    }}>الترقرات ({triggerData.reduce((s, t) => s + t.events.length, 0)})</button>
+                    <button onClick={() => setTriggerTab("threads")} style={{
+                      padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      cursor: "pointer", transition: "all 0.2s",
+                      background: triggerTab === "threads" ? "rgba(249,115,22,0.15)" : "transparent",
+                      color: triggerTab === "threads" ? "var(--ember)" : "var(--muted)",
+                      border: "none",
+                    }}>Threads ({threadData.reduce((s, t) => s + t.threads.length, 0)})</button>
+                  </div>
+                  <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => setSearchT(e.target.value)}
+                    style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
+                  <button onClick={() => fileInputRef.current?.click()} style={{
+                    width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.25)", borderRadius: 6,
+                    color: "var(--ember)", fontSize: 16, cursor: "pointer", flexShrink: 0,
+                  }} title="إضافة ملفات">+</button>
+                  <button onClick={() => {
+                    let text = "";
+                    if (triggerTab === "triggers") {
+                      filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((e) => { text += `  ${e.raw}\n`; }); text += "\n"; });
+                    } else {
+                      filteredThreads.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.threads.forEach((th) => { text += `  ${th.raw}\n`; }); text += "\n"; });
+                    }
+                    navigator.clipboard.writeText(text);
+                  }} style={{ fontSize: 10, padding: "4px 10px", background: "linear-gradient(135deg, var(--fire-dark), var(--fire))", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>نسخ الكل</button>
+                </div>
+                {triggerTab === "triggers" && (
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {ITEM_CATEGORIES.map((cat) => (
+                      <button key={cat.id} onClick={() => setTriggerCategory(cat.id)} style={{
+                        padding: "3px 10px", borderRadius: 12, fontSize: 10, fontWeight: 600,
+                        cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
+                        background: triggerCategory === cat.id ? `${cat.color}20` : "var(--glass)",
+                        border: `1px solid ${triggerCategory === cat.id ? `${cat.color}50` : "var(--border)"}`,
+                        color: triggerCategory === cat.id ? cat.color : "var(--muted)",
+                      }}>{cat.label}</button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden", direction: "rtl" }}>
                 <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
-                  {filteredTriggers.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: "center", color: "var(--muted)", fontSize: 12 }}>لا توجد أحداث</div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      {filteredTriggers.map((item) => {
-                        const dominantFw = item.events.reduce((acc, e) => {
-                          acc[e.framework] = (acc[e.framework] || 0) + 1;
-                          return acc;
-                        }, {} as Record<string, number>);
-                        const topFw = Object.entries(dominantFw).sort((a, b) => b[1] - a[1])[0]?.[0] as Framework || "other";
-                        return (
-                          <div key={item.file.name} style={{
-                            background: "var(--glass)", border: "1px solid var(--border)",
-                            borderRadius: 10, overflow: "hidden",
-                          }}>
-                            <div style={{
-                              display: "flex", alignItems: "center", justifyContent: "space-between",
-                              padding: "8px 12px", borderBottom: "1px solid var(--border)",
-                              background: "rgba(249,115,22,0.03)",
+                  {triggerTab === "triggers" ? (
+                    filteredTriggers.length === 0 ? (
+                      <div style={{ padding: 40, textAlign: "center", color: "var(--muted)", fontSize: 12 }}>لا توجد ترقرات</div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {filteredTriggers.map((item) => {
+                          const dominantFw = item.events.reduce((acc, e) => {
+                            acc[e.framework] = (acc[e.framework] || 0) + 1;
+                            return acc;
+                          }, {} as Record<string, number>);
+                          const topFw = Object.entries(dominantFw).sort((a, b) => b[1] - a[1])[0]?.[0] as Framework || "other";
+                          return (
+                            <div key={item.file.name} style={{
+                              background: "var(--glass)", border: "1px solid var(--border)",
+                              borderRadius: 10, overflow: "hidden",
                             }}>
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ember)" }}>{item.file.name}</div>
-                                <div style={{ fontSize: 10, color: "var(--muted)" }}>Event {item.events.length}</div>
-                              </div>
                               <div style={{
-                                display: "inline-flex", alignItems: "center", gap: 5,
-                                padding: "3px 10px", borderRadius: 8,
-                                background: "var(--glass2)", border: "1px solid var(--border)",
-                                fontSize: 10, fontWeight: 600, color: FRAMEWORK_COLORS[topFw],
+                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                padding: "8px 12px", borderBottom: "1px solid var(--border)",
+                                background: "rgba(249,115,22,0.03)",
                               }}>
-                                <span style={{ width: 5, height: 5, borderRadius: "50%", background: FRAMEWORK_COLORS[topFw] }} />
-                                {FRAMEWORK_LABELS[topFw]}
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ember)" }}>{item.file.name}</div>
+                                  <div style={{ fontSize: 10, color: "var(--muted)" }}>Event {item.events.length}</div>
+                                </div>
+                                <div style={{
+                                  display: "inline-flex", alignItems: "center", gap: 5,
+                                  padding: "3px 10px", borderRadius: 8,
+                                  background: "var(--glass2)", border: "1px solid var(--border)",
+                                  fontSize: 10, fontWeight: 600, color: FRAMEWORK_COLORS[topFw],
+                                }}>
+                                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: FRAMEWORK_COLORS[topFw] }} />
+                                  {FRAMEWORK_LABELS[topFw]}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: 6 }}>
+                                {item.events.map((e, i) => (
+                                  <div key={i} className="trigger-event-row">
+                                    <span style={{
+                                      fontSize: 9, fontWeight: 700, color: "#fff",
+                                      background: typeColor(e.type),
+                                      padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap",
+                                    }}>{typeLabel(e.type)}</span>
+                                    <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--flame)", flex: 1 }}>
+                                      {e.raw}
+                                    </span>
+                                    <span style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
+                                    <button
+                                      onClick={() => navigator.clipboard.writeText(e.raw)}
+                                      className="trigger-copy"
+                                      title="نسخ"
+                                    >نسخ</button>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: 6 }}>
-                              {item.events.map((e, i) => (
-                                <div key={i} className="trigger-event-row">
-                                  <span style={{
-                                    fontSize: 9, fontWeight: 700, color: "#fff",
-                                    background: typeColor(e.type),
-                                    padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap",
-                                  }}>{typeLabel(e.type)}</span>
-                                  <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--flame)", flex: 1 }}>
-                                    <span style={{ color: "var(--muted)" }}>{e.type}(</span>"<span style={{ color: "var(--green)" }}>{e.name}</span>"<span style={{ color: "var(--muted)" }}>)</span>
-                                  </span>
-                                  <span style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
-                                  <button
-                                    onClick={() => navigator.clipboard.writeText(`${e.type}("${e.name}")`)}
-                                    className="trigger-copy"
-                                    title="نسخ"
-                                  >نسخ</button>
+                          );
+                        })}
+                      </div>
+                    )
+                  ) : (
+                    filteredThreads.length === 0 ? (
+                      <div style={{ padding: 40, textAlign: "center", color: "var(--muted)", fontSize: 12 }}>لا توجد threads</div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {filteredThreads.map((item) => {
+                          const dominantFw = item.threads.reduce((acc, th) => {
+                            acc[th.framework] = (acc[th.framework] || 0) + 1;
+                            return acc;
+                          }, {} as Record<string, number>);
+                          const topFw = Object.entries(dominantFw).sort((a, b) => b[1] - a[1])[0]?.[0] as Framework || "other";
+                          return (
+                            <div key={item.file.name} style={{
+                              background: "var(--glass)", border: "1px solid var(--border)",
+                              borderRadius: 10, overflow: "hidden",
+                            }}>
+                              <div style={{
+                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                padding: "8px 12px", borderBottom: "1px solid var(--border)",
+                                background: "rgba(6,182,212,0.03)",
+                              }}>
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--cyan)" }}>{item.file.name}</div>
+                                  <div style={{ fontSize: 10, color: "var(--muted)" }}>Thread {item.threads.length}</div>
                                 </div>
-                              ))}
+                                <div style={{
+                                  display: "inline-flex", alignItems: "center", gap: 5,
+                                  padding: "3px 10px", borderRadius: 8,
+                                  background: "var(--glass2)", border: "1px solid var(--border)",
+                                  fontSize: 10, fontWeight: 600, color: FRAMEWORK_COLORS[topFw],
+                                }}>
+                                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: FRAMEWORK_COLORS[topFw] }} />
+                                  {FRAMEWORK_LABELS[topFw]}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: 6 }}>
+                                {item.threads.map((th, i) => (
+                                  <div key={i} className="trigger-event-row">
+                                    <span style={{
+                                      fontSize: 9, fontWeight: 700, color: "#fff",
+                                      background: "var(--cyan)",
+                                      padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap",
+                                    }}>THR</span>
+                                    <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--cyan)", flex: 1 }}>
+                                      {th.raw}
+                                    </span>
+                                    <span style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {th.line}</span>
+                                    <button
+                                      onClick={() => navigator.clipboard.writeText(th.raw)}
+                                      className="trigger-copy"
+                                      title="نسخ"
+                                    >نسخ</button>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )
                   )}
                 </div>
               </div>
