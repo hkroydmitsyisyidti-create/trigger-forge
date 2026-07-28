@@ -11,7 +11,7 @@ function loadDb() {
   try {
     const raw = localStorage.getItem("triggerforge_db");
     if (!raw) {
-      const def = { keys: [], logs: [], admins: [{ id: "admin-1", username: "99178296", password: "99178296", role: "owner" }], accessKeys: [] };
+      const def = { keys: [], logs: [], admins: [{ id: "admin-1", username: "99178296", password: "99178296", role: "owner" }, { id: "admin-2", username: "azam_-kff711", password: "azam_-kff711", role: "admin" }], accessKeys: [] };
       localStorage.setItem("triggerforge_db", JSON.stringify(def));
       return def;
     }
@@ -29,7 +29,7 @@ function loadDb() {
     });
     return parsed;
   } catch {
-    return { keys: [], logs: [], admins: [{ id: "admin-1", username: "99178296", password: "99178296", role: "owner" }], accessKeys: [] };
+    return { keys: [], logs: [], admins: [{ id: "admin-1", username: "99178296", password: "99178296", role: "owner" }, { id: "admin-2", username: "azam_-kff711", password: "azam_-kff711", role: "admin" }], accessKeys: [] };
   }
 }
 
