@@ -39,6 +39,31 @@ interface LoadedFile {
   rawFile?: File;
 }
 
+const ITEM_CATEGORIES = [
+  { id: "all", label: "الكل", color: "var(--fg)" },
+  { id: "weapons", label: "الاسلحه", color: "var(--fire)" },
+  { id: "food", label: "اكل", color: "var(--green)" },
+  { id: "drinks", label: "مشروبات", color: "var(--cyan)" },
+  { id: "vehicles", label: "سيارات", color: "var(--blue)" },
+  { id: "medical", label: "ادويه", color: "var(--pink)" },
+  { id: "tools", label: "ادوات كهرباء", color: "var(--flame)" },
+  { id: "documents", label: "مخطوطات", color: "var(--purple)" },
+  { id: "animals", label: "حيوانات", color: "var(--yellow)" },
+];
+
+function matchCategory(name: string, cat: string): boolean {
+  if (cat === "all") return true;
+  if (cat === "weapons") return /^(weapon_|WEAPON_|gun_|wep_)/.test(name) || /pistol|rifle|shotgun|smg|sniper|grenade|knife|bat|axe|machete|revolver|carbine|ammo|magazine|silencer|scope|flashlight/.test(name);
+  if (cat === "food") return /^(food_|bread|meat|apple|banana|chicken|fish|burger|pizza|sandwich|taco|rice|egg|cheese|candy|chocolate|donut|hotdog|salad|soup|steak|cookie|cake|pie|fruit|orange|grape|lemon|watermelon|strawberry|blueberry|melon|peach|cherry|coconut|mango|pineapple|avocado|carrot|potato|tomato|corn|onion|mushroom|peanut|almond|nut|bean|pea|broccoli|cabbage|lettuce|cucumber|pepper|garlic|ginger|salt|sugar|flour|butter|oil|sauce|ketchup|mustard|mayo|honey|jam|cream|milk|yogurt|cheese|butter|bacon|ham|sausage|nugget|fries|chips|popcorn|pretzel|waffle|pancake|cereal|oat|toast|bagel|muffin|croissant|donut|brownie|pudding|icecream|sorbet|jelly|syrup|spice|herb|seasoning)/.test(name);
+  if (cat === "drinks") return /^(drink_|water_|beer_|wine_|vodka_|whiskey_|juice_|soda_|coffee_|tea_|milk_|cola_|energy|sprunk|ecola|egs|coffee)/.test(name);
+  if (cat === "vehicles") return /^(vehicle_|car_|suv_|truck_|bike_|motorcycle_|boat_|helicopter_|plane_|train_|bus_|van_|bicycle_)/.test(name);
+  if (cat === "medical") return /^(med_|medical_|bandage|health|pill|syringe|pharmaceutical|firstaid|medicine|morphine|antibiotic|vitamin|cure|heal|painkiller|prescription|drug|pill|capsule|tablet|ointment|cream|inhaler|defibrillator)/.test(name);
+  if (cat === "tools") return /^(tool_|lockpick|lockpick_|repair_|wrench|screwdriver|hammer|drill|pliers|soldering|multimeter|wire|cable|fuse|battery|flashlight|torch|lantern|radio|phone|laptop|computer|tablet|camera|microscope|telescope|binocular|compass|GPS|tracker|detector)/.test(name);
+  if (cat === "documents") return /^(document_|paper_|license|passport|id_|card_|certificate|ticket|receipt|note|letter|contract|permit|voucher|diploma|badge|stamp|envelope|folder)/.test(name);
+  if (cat === "animals") return /^(animal_|dog_|cat_|horse_|bird_|fish_|rabbit_|bear_|wolf_|deer_|lion_|tiger_|monkey_|cow_|pig_|sheep_|chicken_|duck_|goat_|fox_|hawk_|eagle_|snake_|turtle_|frog_|whale_|shark_|dolphin_)/.test(name);
+  return false;
+}
+
 function readEntryRecursive(entry: FileSystemEntry): Promise<File[]> {
   if (entry.isFile) {
     return new Promise((resolve) => {
@@ -81,6 +106,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const [selTrigger, setSelTrigger] = useState(0);
   const [searchW, setSearchW] = useState("");
   const [searchT, setSearchT] = useState("");
+  const [itemCategory, setItemCategory] = useState("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
@@ -194,10 +220,19 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   }, [files]);
 
   const filteredItems = useMemo(() => {
-    if (!searchW.trim()) return allItemFiles;
-    const q = searchW.toLowerCase();
-    return allItemFiles.filter((f) => f.name.toLowerCase().includes(q) || f.name.replace(/\.(png|jpg|jpeg|webp)$/i, "").toLowerCase().includes(q));
-  }, [allItemFiles, searchW]);
+    let items = allItemFiles;
+    if (searchW.trim()) {
+      const q = searchW.toLowerCase();
+      items = items.filter((f) => f.name.toLowerCase().includes(q) || f.name.replace(/\.(png|jpg|jpeg|webp)$/i, "").toLowerCase().includes(q));
+    }
+    if (itemCategory !== "all") {
+      items = items.filter((f) => {
+        const name = f.name.replace(/\.(png|jpg|jpeg|webp)$/i, "").toLowerCase();
+        return matchCategory(name, itemCategory);
+      });
+    }
+    return items;
+  }, [allItemFiles, searchW, itemCategory]);
 
   const filteredTriggers = useMemo(() => {
     if (!searchT.trim()) return triggerData;
@@ -273,15 +308,28 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           <div style={{ display: "flex", flex: 1, overflow: "hidden", direction: "ltr" }}>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)" }}>
-              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(239,68,68,0.04)", direction: "rtl" }}>
-                <span style={{ color: "var(--fire)", fontWeight: 700, fontSize: 12 }}>ايتمات ({filteredItems.length})</span>
-                <input type="text" placeholder="بحث..." value={searchW} onChange={(e) => setSearchW(e.target.value)}
-                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
-                <button onClick={() => fileInputRef.current?.click()} style={{
-                  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 6,
-                  color: "var(--fire)", fontSize: 16, cursor: "pointer", flexShrink: 0,
-                }} title="إضافة ملفات">+</button>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", background: "rgba(239,68,68,0.04)", direction: "rtl" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ color: "var(--fire)", fontWeight: 700, fontSize: 12 }}>ايتمات ({filteredItems.length})</span>
+                  <input type="text" placeholder="بحث..." value={searchW} onChange={(e) => setSearchW(e.target.value)}
+                    style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
+                  <button onClick={() => fileInputRef.current?.click()} style={{
+                    width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 6,
+                    color: "var(--fire)", fontSize: 16, cursor: "pointer", flexShrink: 0,
+                  }} title="إضافة ملفات">+</button>
+                </div>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {ITEM_CATEGORIES.map((cat) => (
+                    <button key={cat.id} onClick={() => setItemCategory(cat.id)} style={{
+                      padding: "3px 10px", borderRadius: 12, fontSize: 10, fontWeight: 600,
+                      cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
+                      background: itemCategory === cat.id ? `${cat.color}20` : "var(--glass)",
+                      border: `1px solid ${itemCategory === cat.id ? `${cat.color}50` : "var(--border)"}`,
+                      color: itemCategory === cat.id ? cat.color : "var(--muted)",
+                    }}>{cat.label}</button>
+                  ))}
+                </div>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>
                 {filteredItems.length === 0 ? (
