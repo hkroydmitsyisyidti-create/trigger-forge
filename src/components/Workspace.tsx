@@ -15,6 +15,7 @@ interface LoadedFile {
   size: number;
   fileType: string;
   isBinary: boolean;
+  rawFile?: File;
 }
 
 function readEntryRecursive(entry: FileSystemEntry): Promise<File[]> {
@@ -183,6 +184,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           size: file.size || content.length,
           fileType: detectFileType(file.name, new Uint8Array(0)),
           isBinary,
+          rawFile: file,
         };
         newFiles.push(f);
         loaded++;

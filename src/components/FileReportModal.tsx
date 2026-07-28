@@ -14,6 +14,7 @@ interface LoadedFile {
   size: number;
   fileType: string;
   isBinary: boolean;
+  rawFile?: File;
 }
 
 interface Props {
@@ -23,26 +24,18 @@ interface Props {
 
 type ViewMode = "triggers" | "weapons" | "all";
 
-function extractTriggerNames(content: string): { name: string; type: string }[] {
-  const events: { name: string; type: string }[] = [];
+function extractServerEvents(content: string): string[] {
+  const names: string[] = [];
   const seen = new Set<string>();
-  const patterns: [RegExp, string][] = [
-    [/TriggerServerEvent\s*\(\s*["']([^"']+)["']/g, "TriggerServerEvent"],
-    [/TriggerClientEvent\s*\(\s*["']([^"']+)["']/g, "TriggerClientEvent"],
-    [/RegisterNetEvent\s*\(\s*["']([^"']+)["']/g, "RegisterNetEvent"],
-    [/AddEventHandler\s*\(\s*["']([^"']+)["']/g, "AddEventHandler"],
-  ];
-  for (const [re, type] of patterns) {
-    let m;
-    while ((m = re.exec(content)) !== null) {
-      const key = type + ":" + m[1];
-      if (!seen.has(key)) {
-        seen.add(key);
-        events.push({ name: m[1], type });
-      }
+  const re = /TriggerServerEvent\s*\(\s*["']([^"']+)["']/g;
+  let m;
+  while ((m = re.exec(content)) !== null) {
+    if (!seen.has(m[1])) {
+      seen.add(m[1]);
+      names.push(m[1]);
     }
   }
-  return events;
+  return names;
 }
 
 function isWeaponImage(name: string): boolean {
@@ -69,10 +62,10 @@ export default function FileReportModal({ files, onClose }: Props) {
   }, [onClose]);
 
   const triggerItems = useMemo(() => {
-    const items: { file: LoadedFile; events: { name: string; type: string }[] }[] = [];
+    const items: { file: LoadedFile; serverEvents: string[] }[] = [];
     for (const f of files) {
-      const events = extractTriggerNames(f.content);
-      if (events.length > 0) items.push({ file: f, events });
+      const serverEvents = extractServerEvents(f.content);
+      if (serverEvents.length > 0) items.push({ file: f, serverEvents });
     }
     return items;
   }, [files]);
@@ -82,7 +75,7 @@ export default function FileReportModal({ files, onClose }: Props) {
   }, [files]);
 
   const displayItems = useMemo(() => {
-    let items: { file: LoadedFile; events?: { name: string; type: string }[] }[];
+    let items: { file: LoadedFile; serverEvents?: string[] }[];
     if (viewMode === "triggers") {
       items = triggerItems;
     } else if (viewMode === "weapons") {
@@ -108,7 +101,7 @@ export default function FileReportModal({ files, onClose }: Props) {
     if (viewMode === "triggers") {
       for (const t of triggerItems) {
         text += `=== ${t.file.name} ===\n`;
-        t.events.forEach((e) => { text += `  ${e.type}("${e.name}")\n`; });
+        t.serverEvents.forEach((name) => { text += `  TriggerServerEvent("${name}")\n`; });
         text += "\n";
       }
     } else if (viewMode === "weapons") {
@@ -185,7 +178,7 @@ export default function FileReportModal({ files, onClose }: Props) {
                   {viewMode === "weapons" ? extractWeaponName(item.file.name) : item.file.name}
                 </div>
                 <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 2 }}>
-                  {viewMode === "triggers" && item.events && `${item.events.length} حدث`}
+                  {viewMode === "triggers" && item.serverEvents && `${item.serverEvents.length} حدث`}
                   {viewMode === "weapons" && item.file.name}
                   {viewMode === "all" && formatSize(item.file.size)}
                 </div>
@@ -195,7 +188,7 @@ export default function FileReportModal({ files, onClose }: Props) {
           <div style={{ flex: 1, overflowY: "auto", padding: 16, direction: "rtl" }}>
             {selectedItem ? (
               viewMode === "triggers" ? (
-                <TriggerDetail item={selectedItem as { file: LoadedFile; events: { name: string; type: string }[] }} />
+                <TriggerDetail item={selectedItem as { file: LoadedFile; serverEvents: string[] }} />
               ) : viewMode === "weapons" ? (
                 <WeaponDetail file={selectedItem.file} />
               ) : (
@@ -214,55 +207,62 @@ export default function FileReportModal({ files, onClose }: Props) {
   );
 }
 
-function TriggerDetail({ item }: { item: { file: LoadedFile; events: { name: string; type: string }[] } }) {
-  const byType: Record<string, string[]> = {};
-  for (const e of item.events) {
-    if (!byType[e.type]) byType[e.type] = [];
-    if (!byType[e.type].includes(e.name)) byType[e.type].push(e.name);
-  }
-
+function TriggerDetail({ item }: { item: { file: LoadedFile; serverEvents: string[] } }) {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <span style={{ fontSize: 20 }}>&#9889;</span>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--red)" }}>{item.file.name}</div>
-          <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.events.length} أحداث مكتشفة</div>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.serverEvents.length} TriggerServerEvent</div>
         </div>
       </div>
-      {Object.entries(byType).map(([type, names]) => (
-        <div key={type} style={{ marginBottom: 16 }}>
-          <div style={{
-            fontSize: 12, fontWeight: 600, color: "var(--cyan)", marginBottom: 6,
-            padding: "4px 8px", background: "rgba(0,200,255,0.08)", borderRadius: 4,
-          }}>
-            {type} ({names.length})
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {item.serverEvents.map((name, i) => (
+          <div
+            key={i}
+            style={{
+              padding: "8px 12px", background: "var(--bg)", borderRadius: 6,
+              fontSize: 12, fontFamily: "monospace", color: "var(--yellow)",
+              border: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8,
+            }}
+          >
+            <span style={{ color: "var(--red)", fontSize: 10, fontWeight: 600, whiteSpace: "nowrap" }}>TSE</span>
+            {name}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {names.map((name, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: "5px 10px", background: "var(--bg)", borderRadius: 4,
-                  fontSize: 12, fontFamily: "monospace", color: "var(--yellow)",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                {name}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
+      <div style={{ marginTop: 16, padding: "8px 12px", background: "rgba(239,68,68,0.1)", borderRadius: 8, fontSize: 11, color: "var(--red)" }}>
+        {item.serverEvents.length} TriggerServerEvent في هذا الملف
+      </div>
     </div>
   );
 }
 
 function WeaponDetail({ file }: { file: LoadedFile }) {
   const weaponName = extractWeaponName(file.name);
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (file.rawFile) {
+      const url = URL.createObjectURL(file.rawFile);
+      setImgUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [file.rawFile]);
+
   return (
     <div style={{ textAlign: "center", padding: 20 }}>
-      <div style={{ fontSize: 22, fontWeight: 700, color: "var(--yellow)", marginBottom: 8 }}>
+      {imgUrl && (
+        <div style={{ marginBottom: 16 }}>
+          <img
+            src={imgUrl}
+            alt={weaponName}
+            style={{ maxWidth: 200, maxHeight: 200, borderRadius: 8, border: "1px solid var(--border)" }}
+          />
+        </div>
+      )}
+      <div style={{ fontSize: 20, fontWeight: 700, color: "var(--yellow)", marginBottom: 6 }}>
         {weaponName}
       </div>
       <div style={{ fontSize: 12, color: "var(--muted)" }}>{file.name}</div>
