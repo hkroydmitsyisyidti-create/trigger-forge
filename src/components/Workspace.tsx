@@ -71,25 +71,19 @@ function readEntryRecursive(entry: FileSystemEntry): Promise<File[]> {
   return Promise.resolve([]);
 }
 
-type Category = "respect" | "items" | "triggers";
-
 export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) {
+  const [status] = useState<"جاهز" | "يعمل" | "خطأ">("جاهز");
   const [files, setFiles] = useState<LoadedFile[]>([]);
   const [dragging, setDragging] = useState(0);
   const [showPaste, setShowPaste] = useState(false);
   const [pasteCode, setPasteCode] = useState("");
   const [pasteFileName, setPasteFileName] = useState("script.lua");
   const [selTrigger, setSelTrigger] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<Category>("respect");
+  const [searchW, setSearchW] = useState("");
+  const [searchT, setSearchT] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cheatInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
-  useEffect(() => {
-    const timer = setTimeout(() => cheatInputRef.current?.focus(), 300);
-    return () => clearTimeout(timer);
-  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -132,6 +126,9 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   };
 
   const processFiles = (fileList: File[]) => {
+    const newFiles: LoadedFile[] = [];
+    let loaded = 0;
+    if (fileList.length === 0) return;
     fileList.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -141,7 +138,14 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           name: file.name, content, size: file.size || content.length,
           fileType: detectFileType(file.name, new Uint8Array(0)), isBinary, rawFile: file,
         };
+        newFiles.push(f);
+        loaded++;
         setFiles((prev) => [...prev, f]);
+        if (loaded === fileList.length) { /* done loading */ }
+      };
+      reader.onerror = () => {
+        loaded++;
+        if (loaded === fileList.length) { /* done loading */ }
       };
       reader.readAsText(file, "utf-8");
     });
@@ -161,15 +165,25 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const allItemFiles = useMemo(() => files.filter((f) => {
     if (!/\.(png|jpg|jpeg|webp)$/i.test(f.name)) return false;
     const name = f.name.replace(/\.(png|jpg|jpeg|webp)$/i, "").toLowerCase();
+    
+    // Exclude UI elements
     const uiPatterns = /^(crosshair|debug_image|grid|move|hint|interact|bg|monitorborder|bottom|top|hook|lock|pin|slot|spring|wrench|note|logo|none|back|cursor|map\d*|spray|AlphaSpray|newimage|removebg|eagle|wheel|yacht|card|dark-mode|AppStore|Birdy|Browser|Calculator|Camera|Clock|Crypto|DarkChat|FaceTime|Garage|Health|Home|InstaPic|Mail|Maps|MarketPlace|Messages|Music|Notes|Phone|Photos|Racing|Safari|Services|Settings|Spark|Trendy|unkown|VoiceMemo|Wallet|Weather|YellowPages|danger|gallery|picker|faceUnlock|match|banner|warning|tornado|wind|cloudy|drizzle|fog|heavy-rain|night|partly-cloudy|rain|snow|sunny|thunder|ibos|light-mode|no-pfp|mock|picchat|logo|bck|note|RB|EUCTRION|pacificcard|paletocard|package|pain|paint|pancake|panther|paw|peach|pear|pen|pencil|pepper|phone|photo|pie|pill|pizza|plant|plate|plumb|poison|pony|pot|potato|potion|pressure|prune|pudding|pumpkin|purse|queen|quest|rabbit|radish|rail|rainbow|ramen|ransom|receipt|record|recycle|remote|ring|road|rock|roll|rope|rose|ruby|ruler|runners|saddle|sake|salt|sandwich|sauce|saw|scale|scissors|scorpion|screw|seed|sheep|shell|shield|shoe|shovel|shrimp|sickle|signal|silk|sink|skateboard|skeleton|ski|skull|sledge|slush|smoke|snake|snowball|soap|sock|soda|sofa|solar|spaghetti|sparkle|spear|spice|spoon|spray|sprunk|stamp|star|statue|steak|steel|sticker|stone|stove|straw|stripe|sub|suit|sundae|sushi|sword|syringe|tablet|taco|tag|tank|tape|taxi|teapot|teddy|ticket|tie|tiger|tobacco|toilet|tomato|tool|tooth|torch|tower|toy|train|trash|treasure|tree|trophy|truck|trumpet|tshirt|turtle|tv|umbrella|unicorn|usd|vape|vault|vent|vial|video|vinyl|violin|visa|vodka|volcano|waffle|wallet|watch|water|weasel|weed|whale|whiskey|wheat|whistle|white|widow|window|wine|witch|wolf|wood|wool|xmas|yacht|yoga|zebra|zombie)$/i.test(name);
     if (uiPatterns) return false;
+    
+    // Exclude sprays
     if (/^(np_sprays|spray)/i.test(name)) return false;
+    
+    // Exclude phone screenshots (numbers only)
     if (/^\d+$/.test(name)) return false;
+    
+    // Exclude very short names (likely UI elements)
     if (name.length <= 2) return false;
+    
+    // Exclude names with only numbers and underscores
     if (/^[\d_]+$/.test(name)) return false;
+    
     return true;
   }), [files]);
-
   const triggerData = useMemo(() => {
     const items: { file: LoadedFile; events: { name: string; line: number; raw: string }[] }[] = [];
     for (const f of files) {
@@ -180,30 +194,21 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   }, [files]);
 
   const filteredItems = useMemo(() => {
-    if (!searchQuery.trim()) return allItemFiles;
-    const q = searchQuery.toLowerCase();
+    if (!searchW.trim()) return allItemFiles;
+    const q = searchW.toLowerCase();
     return allItemFiles.filter((f) => f.name.toLowerCase().includes(q) || f.name.replace(/\.(png|jpg|jpeg|webp)$/i, "").toLowerCase().includes(q));
-  }, [allItemFiles, searchQuery]);
+  }, [allItemFiles, searchW]);
 
   const filteredTriggers = useMemo(() => {
-    if (!searchQuery.trim()) return triggerData;
-    const q = searchQuery.toLowerCase();
+    if (!searchT.trim()) return triggerData;
+    const q = searchT.toLowerCase();
     return triggerData.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.name.toLowerCase().includes(q)));
-  }, [triggerData, searchQuery]);
-
-  const respectCount = allItemFiles.length;
-  const itemsCount = allItemFiles.length;
-  const triggersCount = triggerData.length;
+  }, [triggerData, searchT]);
 
   useEffect(() => { if (selTrigger >= filteredTriggers.length) setSelTrigger(0); }, [filteredTriggers.length, selTrigger]);
 
   const hasFiles = files.length > 0;
-
-  const getCategoryLabel = (cat: Category) => {
-    if (cat === "respect") return `Respect`;
-    if (cat === "items") return `ايتمات`;
-    return `TriggerServerEvent`;
-  };
+  const statusDot = status === "جاهز" ? "dot-green" : status === "يعمل" ? "dot-yellow" : "dot-red";
 
   return (
     <div className="workspace-root" onDrop={handleDrop} onDragOver={handleDragOver} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave}>
@@ -212,7 +217,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           <div className="drop-overlay-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
           </div>
-          <div className="drop-overlay-text">أسقط الملفات هنا</div>
+          <div className="drop-overlay-text">أسقط <b>الملفات</b> هنا</div>
           <div className="drop-overlay-sub">اتركه للتحميل</div>
         </div>
       )}
@@ -224,147 +229,117 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             <div className="brand-text">Trigger Forge</div>
           </div>
           <div className="tc">
-            {hasFiles && (
-              <div style={{ display: "flex", gap: 6, marginRight: 12 }}>
-                <span className="category-pill active" onClick={() => setActiveCategory("respect")}>
-                  <span className="cat-dot" style={{ background: "var(--flame)" }} />
-                  Respect <span className="cat-count">{respectCount}</span>
-                </span>
-                <span className="category-pill" onClick={() => setActiveCategory("items")}>
-                  <span className="cat-dot" style={{ background: "var(--fire)" }} />
-                  ايتمات <span className="cat-count">{itemsCount}</span>
-                </span>
-                <span className="category-pill" onClick={() => setActiveCategory("triggers")}>
-                  <span className="cat-dot" style={{ background: "var(--ember)" }} />
-                  Triggers <span className="cat-count">{triggersCount}</span>
-                </span>
-              </div>
-            )}
+            <span className="status-pill"><span className={`dot ${statusDot}`} /><span>{status}</span></span>
+            {hasFiles && <span style={{ fontSize: 11, color: "var(--muted)", marginRight: 8 }}>{files.length} ملف | {allItemFiles.length} ايتم | {triggerData.length} ترigger</span>}
           </div>
           <div className="tr" style={{ display: "flex", gap: 8 }}>
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="nav-btn fire">رفع ملفات</button>
-            <button type="button" onClick={() => setShowPaste(true)} className="nav-btn ghost">لصق كود</button>
-            <button type="button" className="ti" title="الإدارة" onClick={onOpenAdmin}>⚙</button>
+            <button type="button" onClick={() => fileInputRef.current?.click()} style={{
+              display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+              background: "linear-gradient(135deg, var(--red), #b91c1c)",
+              border: "none", borderRadius: 10, color: "#fff",
+              fontSize: 12, fontWeight: 600, cursor: "pointer",
+              boxShadow: "0 2px 16px rgba(239,68,68,0.3)",
+              transition: "all 0.2s",
+            }}>رفع ملفات</button>
+            <button type="button" onClick={() => setShowPaste(true)} style={{
+              display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+              background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)",
+              borderRadius: 10, color: "var(--ember)",
+              fontSize: 12, fontWeight: 600, cursor: "pointer",
+              transition: "all 0.2s",
+            }}>لصق كود</button>
+            <button type="button" className="ti" title="الإدارة" onClick={onOpenAdmin}>&#9881;</button>
           </div>
         </nav>
 
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-
-          <div className="cheat-container">
-            <div className="cheat-box">
-              <div className="cheat-label">{getCategoryLabel(activeCategory)}</div>
-              <input
-                ref={cheatInputRef}
-                id="cheat-input"
-                type="text"
-                className="cheat-input"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder={activeCategory === "triggers" ? "بحث في الترiggerات..." : activeCategory === "items" ? "بحث في الايتمات..." : "اسم الايتم أو البحث..."}
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  if (activeCategory === "triggers") setSelTrigger(0);
-                }}
-              />
-              {searchQuery && (
-                <button className="cheat-clear" onClick={() => { setSearchQuery(""); if (activeCategory === "triggers") setSelTrigger(0); }}>×</button>
-              )}
-            </div>
-          </div>
-
-          {!hasFiles ? (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div className="empty-state">
-                <div className="empty-icon"></div>
-                <h3>ابدأ التحليل</h3>
-                <p>أسقط الملفات والمجلدات هنا</p>
-                <p className="empty-hint">يدعم جميع أنواع الملفات والمجلدات</p>
-                <div style={{ marginTop: 24, display: "flex", gap: 10, justifyContent: "center" }}>
-                  <button className="admin-abtn" onClick={() => setShowPaste(true)}>لصق كود</button>
-                  <button className="admin-abtn" onClick={() => fileInputRef.current?.click()}>رفع ملف</button>
+        {!hasFiles ? (
+          <div className="work">
+            <div className="wrap">
+              <div className="canvas-area">
+                <div className="empty-state">
+                  <div className="empty-icon"></div>
+                  <h3>ابدأ التحليل</h3>
+                  <p>أسقط الملفات والمجلدات هنا</p>
+                  <p className="empty-hint">يدعم جميع أنواع الملفات والمجلدات</p>
+                  <div style={{ marginTop: 24, display: "flex", gap: 10, justifyContent: "center" }}>
+                    <button className="admin-abtn" onClick={() => setShowPaste(true)}>لصق كود</button>
+                    <button className="admin-abtn" onClick={() => fileInputRef.current?.click()}>رفع ملف</button>
+                  </div>
                 </div>
               </div>
             </div>
-          ) : (
-            <div style={{ flex: 1, overflow: "hidden" }}>
-              {activeCategory === "respect" && (
-                <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-                  {filteredItems.length === 0 && filteredTriggers.length === 0 ? (
-                    <div className="empty-result">لا توجد نتائج</div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                      {filteredItems.length > 0 && (
-                        <div>
-                          <div className="section-header respect">
-                            <span className="section-dot" style={{ background: "var(--flame)" }} />
-                            <span>ايتمات</span>
-                            <span className="section-count">{filteredItems.length}</span>
-                          </div>
-                          <div className="items-grid">
-                            {filteredItems.map((f, i) => (
-                              <ItemGridItem key={f.name + i} file={f} />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {filteredTriggers.length > 0 && (
-                        <div>
-                          <div className="section-header respect">
-                            <span className="section-dot" style={{ background: "var(--ember)" }} />
-                            <span>TriggerServerEvent</span>
-                            <span className="section-count">{filteredTriggers.length}</span>
-                          </div>
-                          <div className="triggers-list">
-                            {filteredTriggers.map((item, i) => (
-                              <TriggerCard key={item.file.name + i} item={item} />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flex: 1, overflow: "hidden", direction: "ltr" }}>
 
-              {activeCategory === "items" && (
-                <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-                  {filteredItems.length === 0 ? (
-                    <div className="empty-result">لا توجد ايتمات</div>
-                  ) : (
-                    <div className="items-grid">
-                      {filteredItems.map((f, i) => (
-                        <ItemGridItem key={f.name + i} file={f} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeCategory === "triggers" && (
-                <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-                  <div style={{ width: 200, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
-                    {filteredTriggers.length === 0 ? (
-                      <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 11 }}>لا توجد ترiggerات</div>
-                    ) : filteredTriggers.map((item, i) => (
-                      <div key={item.file.name + i} onClick={() => setSelTrigger(i)} className={`trigger-file-item ${selTrigger === i ? "active" : ""}`}>
-                        <div className="trigger-file-name">{item.file.name}</div>
-                        <div className="trigger-file-count">{item.events.length} أحداث</div>
-                      </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)" }}>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(239,68,68,0.04)", direction: "rtl" }}>
+                <span style={{ color: "var(--fire)", fontWeight: 700, fontSize: 12 }}>ايتمات ({filteredItems.length})</span>
+                <input type="text" placeholder="بحث..." value={searchW} onChange={(e) => setSearchW(e.target.value)}
+                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
+                <button onClick={() => fileInputRef.current?.click()} style={{
+                  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 6,
+                  color: "var(--fire)", fontSize: 16, cursor: "pointer", flexShrink: 0,
+                }} title="إضافة ملفات">+</button>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>
+                {filteredItems.length === 0 ? (
+                  <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 11 }}>لا توجد ايتمات</div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
+                    {filteredItems.map((f, i) => (
+                      <ItemGridItem key={f.name + i} file={f} />
                     ))}
                   </div>
-                  <div style={{ flex: 1, overflowY: "auto", padding: 20, direction: "rtl" }}>
-                    {filteredTriggers[selTrigger] ? (
-                      <TriggerDetail item={filteredTriggers[selTrigger]} />
-                    ) : (
-                      <div style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", paddingTop: 50 }}>اختر ملف</div>
-                    )}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          )}
-        </div>
+
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(249,115,22,0.04)", direction: "rtl" }}>
+                <span style={{ color: "var(--ember)", fontWeight: 700, fontSize: 12 }}>TriggerServerEvent ({filteredTriggers.length})</span>
+                <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => { setSearchT(e.target.value); setSelTrigger(0); }}
+                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
+                <button onClick={() => fileInputRef.current?.click()} style={{
+                  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.25)", borderRadius: 6,
+                  color: "var(--ember)", fontSize: 16, cursor: "pointer", flexShrink: 0,
+                }} title="إضافة ملفات">+</button>
+                <button onClick={() => {
+                  let text = "";
+                  filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((e) => { text += `  TriggerServerEvent("${e.name}")\n`; }); text += "\n"; });
+                  navigator.clipboard.writeText(text);
+                }} style={{ fontSize: 10, padding: "4px 10px", background: "linear-gradient(135deg, var(--fire-dark), var(--fire))", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>نسخ الكل</button>
+              </div>
+              <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                <div style={{ width: 160, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
+                  {filteredTriggers.length === 0 ? (
+                    <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 11 }}>لا توجد ترiggerات</div>
+                  ) : filteredTriggers.map((item, i) => (
+                    <div key={item.file.name + i} onClick={() => setSelTrigger(i)} style={{
+                      padding: "7px 10px", cursor: "pointer", fontSize: 11, borderBottom: "1px solid var(--border)",
+                      background: selTrigger === i ? "rgba(248,113,113,0.08)" : "transparent",
+                      borderLeft: selTrigger === i ? "2px solid var(--red)" : "2px solid transparent",
+                      transition: "all 0.15s",
+                    }}>
+                      <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.file.name}</div>
+                      <div style={{ fontSize: 9, color: "var(--muted)" }}>{item.events.length} أحداث</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ flex: 1, overflowY: "auto", padding: 20, direction: "rtl" }}>
+                  {filteredTriggers[selTrigger] ? (
+                    <TriggerDetail item={filteredTriggers[selTrigger]} />
+                  ) : (
+                    <div style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", paddingTop: 50 }}>اختر ملف</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
       </div>
 
       <input ref={fileInputRef} type="file" className="hidden-file" multiple onChange={handleFileInput} />
@@ -374,7 +349,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
               <h3>لصق كود للتحليل</h3>
-              <button className="modal-close" onClick={() => setShowPaste(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowPaste(false)}>&times;</button>
             </div>
             <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ display: "flex", gap: 10 }}>
@@ -392,6 +367,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           </div>
         </div>
       )}
+
     </div>
   );
 }
@@ -417,38 +393,46 @@ function ItemGridItem({ file }: { file: LoadedFile }) {
   };
 
   return (
-    <div className="item-card">
-      <button className="item-copy" onClick={handleCopy} title="نسخ">{copied ? "✓" : "cp"}</button>
-      <div className="item-inner">
+    <div style={{
+      padding: 8, position: "relative",
+      background: "var(--glass)",
+      border: "1px solid var(--border)",
+      borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+      transition: "all 0.2s",
+    }}>
+      <button onClick={handleCopy} title="نسخ اسم الايتم" style={{
+        position: "absolute", top: 4, right: 4, width: 20, height: 20,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: copied ? "rgba(34,197,94,0.85)" : "rgba(0,0,0,0.6)",
+        border: "none", borderRadius: 5, cursor: "pointer",
+        color: "#fff", fontSize: 9, opacity: 0, transition: "all 0.2s",
+        zIndex: 2,
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+      >{copied ? "✓" : "cp"}</button>
+      <div
+        onMouseEnter={(e) => {
+          const btn = e.currentTarget.parentElement?.querySelector("button") as HTMLButtonElement;
+          if (btn) btn.style.opacity = "1";
+        }}
+        onMouseLeave={(e) => {
+          const btn = e.currentTarget.parentElement?.querySelector("button") as HTMLButtonElement;
+          if (btn && !copied) btn.style.opacity = "0";
+        }}
+        style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}
+      >
         {imgUrl ? (
-          <img src={imgUrl} alt="" className="item-img" />
+          <img src={imgUrl} alt="" style={{ width: 64, height: 64, objectFit: "contain", borderRadius: 6 }} />
         ) : (
-          <div className="item-img placeholder" />
+          <div style={{ width: 64, height: 64, borderRadius: 6, background: "var(--bg3)" }} />
         )}
-        <div className="item-name">{itemName}</div>
-      </div>
-    </div>
-  );
-}
-
-function TriggerCard({ item }: { item: { file: LoadedFile; events: { name: string; line: number; raw: string }[] } }) {
-  return (
-    <div className="trigger-card">
-      <div className="trigger-card-head">
-        <div className="trigger-card-file">{item.file.name}</div>
-        <div className="trigger-card-count">{item.events.length} TriggerServerEvent</div>
-      </div>
-      <div className="trigger-card-events">
-        {item.events.map((e, i) => (
-          <div key={i} className="trigger-event-row">
-            <span className="trigger-badge">TSE</span>
-            <span className="trigger-event-name">
-              <span className="dim">TriggerServerEvent(</span>"<span className="green">{e.name}</span>"<span className="dim">)</span>
-            </span>
-            <span className="trigger-line">سطر {e.line}</span>
-            <button className="trigger-copy" onClick={() => navigator.clipboard.writeText(`TriggerServerEvent("${e.name}")`)}>نسخ</button>
-          </div>
-        ))}
+        <div style={{
+          fontSize: 10, fontWeight: 500, color: "var(--fg)",
+          textAlign: "center", overflow: "hidden", textOverflow: "ellipsis",
+          whiteSpace: "nowrap", width: "100%",
+        }}>
+          {itemName}
+        </div>
       </div>
     </div>
   );
@@ -457,19 +441,29 @@ function TriggerCard({ item }: { item: { file: LoadedFile; events: { name: strin
 function TriggerDetail({ item }: { item: { file: LoadedFile; events: { name: string; line: number; raw: string }[] } }) {
   return (
     <div>
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ember)" }}>{item.file.name}</div>
-        <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.events.length} TriggerServerEvent</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ember)" }}>{item.file.name}</div>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.events.length} TriggerServerEvent</div>
+        </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {item.events.map((e, i) => (
-          <div key={i} className="trigger-event-row">
-            <span className="trigger-badge">TSE</span>
-            <span className="trigger-event-name">
-              <span className="dim">TriggerServerEvent(</span>"<span className="green">{e.name}</span>"<span className="dim">)</span>
+          <div key={i} style={{
+            padding: "8px 12px", background: "var(--glass)", borderRadius: 8,
+            border: "1px solid var(--border)", direction: "ltr", textAlign: "left",
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, var(--fire-dark), var(--fire))", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>TSE</span>
+            <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--flame)", flex: 1 }}>
+              <span style={{ color: "var(--muted)" }}>TriggerServerEvent(</span>"<span style={{ color: "var(--green)" }}>{e.name}</span>"<span style={{ color: "var(--muted)" }}>)</span>
             </span>
-            <span className="trigger-line">سطر {e.line}</span>
-            <button className="trigger-copy" onClick={() => navigator.clipboard.writeText(`TriggerServerEvent("${e.name}")`)}>نسخ</button>
+            <span style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
+            <button
+              onClick={() => navigator.clipboard.writeText(`TriggerServerEvent("${e.name}")`)}
+              style={{ fontSize: 9, padding: "3px 8px", background: "var(--glass2)", color: "var(--fg)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
+              title="نسخ"
+            >نسخ</button>
           </div>
         ))}
       </div>
