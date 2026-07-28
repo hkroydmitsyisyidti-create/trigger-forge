@@ -295,7 +295,6 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                       borderLeft: selWeapon === i ? "2px solid var(--yellow)" : "2px solid transparent",
                     }}>
                       <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{extractWeaponName(f.name)}</div>
-                      <div style={{ fontSize: 8, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</div>
                     </div>
                   ))}
                 </div>
@@ -399,8 +398,7 @@ function WeaponPreview({ file }: { file: LoadedFile }) {
     <div style={{ textAlign: "center" }}>
       {imgUrl && <div style={{ marginBottom: 12 }}><img src={imgUrl} alt={weaponName} style={{ width: 150, height: 150, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)" }} /></div>}
       <div style={{ fontSize: 16, fontWeight: 700, color: "var(--yellow)", marginBottom: 4 }}>{weaponName}</div>
-      <div style={{ fontSize: 10, color: "var(--muted)" }}>{file.name}</div>
-      <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 2 }}>{formatSize(file.size)}</div>
+      <div style={{ fontSize: 10, color: "var(--muted)" }}>{formatSize(file.size)}</div>
     </div>
   );
 }
