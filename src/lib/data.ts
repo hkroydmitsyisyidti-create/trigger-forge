@@ -38,30 +38,13 @@ export interface DB {
 }
 
 const DEFAULT_DB: DB = {
-  keys: [
-    {
-      id: "demo-key-1",
-      key: "TF-XXXX-YYYY-ZZZZ",
-      duration: "30d",
-      bound: "",
-      createdAt: "2026-07-28T00:00:00.000Z",
-      expiresAt: "2026-08-27T00:00:00.000Z",
-    },
-  ],
+  keys: [],
   admins: [
-    { id: "admin-1", username: import.meta.env.VITE_OWNER_USER || "99178296", password: import.meta.env.VITE_OWNER_PASS || "99178296", role: "owner" },
-    { id: "admin-2", username: import.meta.env.VITE_ADMIN_USER || "azam_-kff711", password: import.meta.env.VITE_ADMIN_PASS || "azam_-kff711", role: "admin" },
+    { id: "admin-1", username: import.meta.env.VITE_OWNER_USER || "oman2020", password: import.meta.env.VITE_OWNER_PASS || "oman2020", role: "owner" },
   ],
-  logs: [
-    {
-      id: "log-1",
-      date: "2026-07-28T00:00:00.000Z",
-      ip: "127.0.0.1",
-      action: "System initialized",
-    },
-  ],
+  logs: [],
   bans: [],
-  accessKeys: ["TF-XXXX-YYYY-ZZZZ"],
+  accessKeys: [],
 };
 
 function uid(): string {
@@ -106,7 +89,7 @@ function getDurationLabel(d: string): string {
 
 export function getDB(): DB {
   try {
-    const DB_VERSION = "2";
+    const DB_VERSION = "3";
     const currentVersion = localStorage.getItem("triggerforge_version");
     if (currentVersion !== DB_VERSION) {
       localStorage.setItem("triggerforge_db", JSON.stringify(DEFAULT_DB));

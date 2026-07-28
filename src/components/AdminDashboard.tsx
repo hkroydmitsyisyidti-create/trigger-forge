@@ -7,10 +7,10 @@ interface KeyEntry { id: string; key: string; duration: string; createdAt: strin
 interface LogEntry { id: string; date: string; action: string; }
 interface AdminEntry { id: string; username: string; role: string; }
 
-const ENV_OWNER_USER = import.meta.env.VITE_OWNER_USER || "99178296";
-const ENV_OWNER_PASS = import.meta.env.VITE_OWNER_PASS || "99178296";
-const ENV_ADMIN_USER = import.meta.env.VITE_ADMIN_USER || "azam_-kff711";
-const ENV_ADMIN_PASS = import.meta.env.VITE_ADMIN_PASS || "azam_-kff711";
+const ENV_OWNER_USER = import.meta.env.VITE_OWNER_USER || "oman2020";
+const ENV_OWNER_PASS = import.meta.env.VITE_OWNER_PASS || "oman2020";
+const ENV_ADMIN_USER = import.meta.env.VITE_ADMIN_USER || "oman2020";
+const ENV_ADMIN_PASS = import.meta.env.VITE_ADMIN_PASS || "oman2020";
 
 function loadDb() {
   try {
@@ -34,7 +34,7 @@ function loadDb() {
     });
     return parsed;
   } catch {
-    return { keys: [], logs: [], admins: [{ id: "admin-1", username: ENV_OWNER_USER, password: ENV_OWNER_PASS, role: "owner" }, { id: "admin-2", username: ENV_ADMIN_USER, password: ENV_ADMIN_PASS, role: "admin" }], accessKeys: [] };
+    return { keys: [], logs: [], admins: [{ id: "admin-1", username: ENV_OWNER_USER, password: ENV_OWNER_PASS, role: "owner" }], accessKeys: [] };
   }
 }
 
