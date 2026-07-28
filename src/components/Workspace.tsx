@@ -1,12 +1,34 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import FileReportModal from "./FileReportModal";
 import { detectFileType } from "../lib/fileReader";
 
-interface ConsoleEntry {
-  id: string;
-  type: "info" | "success" | "error" | "warn" | "output";
-  text: string;
-  time: string;
+function extractServerEvents(content: string): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  const re = /TriggerServerEvent\s*\(\s*["']([^"']+)["']/g;
+  let m;
+  while ((m = re.exec(content)) !== null) {
+    if (!seen.has(m[1])) { seen.add(m[1]); names.push(m[1]); }
+  }
+  return names;
+}
+
+function isWeaponImage(name: string): boolean {
+  return /^weapon[_\-]/i.test(name) && /\.(png|jpg|jpeg|webp)$/i.test(name);
+}
+
+function extractWeaponName(filename: string): string {
+  let name = filename.replace(/\.(png|jpg|jpeg|webp)$/i, "");
+  name = name.replace(/^weapon[_\-]/i, "").replace(/WEAPON[_\-]/i, "").replace(/[_\-]/g, " ");
+  return name.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatSize(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
 interface LoadedFile {
@@ -50,73 +72,38 @@ function readEntryRecursive(entry: FileSystemEntry): Promise<File[]> {
   return Promise.resolve([]);
 }
 
-type SideTab = "results" | "console" | "files";
-
 export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) {
-  const [status, setStatus] = useState<"جاهز" | "يعمل" | "خطأ">("جاهز");
-  const [sideTab, setSideTab] = useState<SideTab>("results");
-  const [entries, setEntries] = useState<ConsoleEntry[]>([]);
-  const [filter, setFilter] = useState("");
-  const [customInput, setCustomInput] = useState("");
+  const [status] = useState<"جاهز" | "يعمل" | "خطأ">("جاهز");
   const [files, setFiles] = useState<LoadedFile[]>([]);
   const [dragging, setDragging] = useState(0);
   const [showReport, setShowReport] = useState<LoadedFile[] | null>(null);
   const [showPaste, setShowPaste] = useState(false);
   const [pasteCode, setPasteCode] = useState("");
   const [pasteFileName, setPasteFileName] = useState("script.lua");
-  const consoleEndRef = useRef<HTMLDivElement>(null);
+  const [selWeapon, setSelWeapon] = useState(0);
+  const [selTrigger, setSelTrigger] = useState(0);
+  const [searchW, setSearchW] = useState("");
+  const [searchT, setSearchT] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-
-  const addEntry = useCallback((type: ConsoleEntry["type"], text: string) => {
-    const now = new Date();
-    const time = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    setEntries((prev) => [...prev, { id: uid(), type, text, time }]);
-  }, []);
-
-  useEffect(() => {
-    consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [entries]);
-
-  const handleRun = () => {
-    if (!customInput.trim()) return;
-    setStatus("يعمل");
-    addEntry("info", `> ${customInput}`);
-    setTimeout(() => {
-      addEntry("output", `[استجابة] تم التنفيذ: ${customInput}`);
-      setStatus("جاهز");
-    }, 800);
-    setCustomInput("");
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") { e.preventDefault(); handleRun(); }
-  };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current = 0;
     setDragging(0);
-
     const allFiles: File[] = [];
     const items = e.dataTransfer.items;
-
     if (items) {
-      const entries: Promise<File[]>[] = [];
+      const entryPromises: Promise<File[]>[] = [];
       for (let i = 0; i < items.length; i++) {
         const entry = items[i].webkitGetAsEntry?.();
-        if (entry) {
-          entries.push(readEntryRecursive(entry));
-        } else {
-          const f = items[i].getAsFile();
-          if (f) allFiles.push(f);
-        }
+        if (entry) entryPromises.push(readEntryRecursive(entry));
+        else { const f = items[i].getAsFile(); if (f) allFiles.push(f); }
       }
-      if (entries.length > 0) {
-        Promise.all(entries).then((results) => {
+      if (entryPromises.length > 0) {
+        Promise.all(entryPromises).then((results) => {
           const flat = results.flat().filter(Boolean);
           if (flat.length > 0) processFiles(flat);
           else if (allFiles.length > 0) processFiles(allFiles);
@@ -124,148 +111,91 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
         return;
       }
     }
-
     if (allFiles.length === 0) {
-      const droppedFiles = Array.from(e.dataTransfer.files);
-      if (droppedFiles.length > 0) allFiles.push(...droppedFiles);
+      const dropped = Array.from(e.dataTransfer.files);
+      if (dropped.length > 0) allFiles.push(...dropped);
     }
     if (allFiles.length > 0) processFiles(allFiles);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter.current++;
-    setDragging(dragCounter.current);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter.current--;
-    if (dragCounter.current <= 0) {
-      dragCounter.current = 0;
-      setDragging(0);
-    }
-  }, []);
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); }, []);
+  const handleDragEnter = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); dragCounter.current++; setDragging(dragCounter.current); }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); dragCounter.current--; if (dragCounter.current <= 0) { dragCounter.current = 0; setDragging(0); } }, []);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = Array.from(e.target.files || []);
-    if (fileList.length > 0) {
-      processFiles(fileList);
-    }
+    if (fileList.length > 0) processFiles(fileList);
     e.target.value = "";
   };
 
   const processFiles = (fileList: File[]) => {
     const newFiles: LoadedFile[] = [];
     let loaded = 0;
-
     if (fileList.length === 0) return;
-
     fileList.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
         let content = (ev.target?.result as string) || "";
-        let isBinary = false;
-
-        if (content.includes("\0")) {
-          isBinary = true;
-        }
-
+        let isBinary = content.includes("\0");
         const f: LoadedFile = {
-          name: file.name,
-          content,
-          size: file.size || content.length,
-          fileType: detectFileType(file.name, new Uint8Array(0)),
-          isBinary,
-          rawFile: file,
+          name: file.name, content, size: file.size || content.length,
+          fileType: detectFileType(file.name, new Uint8Array(0)), isBinary, rawFile: file,
         };
         newFiles.push(f);
         loaded++;
         setFiles((prev) => [...prev, f]);
-        const sizeKB = ((file.size || content.length) / 1024).toFixed(1);
-        addEntry("success", `تم التحميل: ${file.name} (${sizeKB}KB)${isBinary ? " [ثنائي]" : ""}`);
-        if (loaded === fileList.length) {
-          setShowReport(newFiles);
-        }
+        if (loaded === fileList.length) setShowReport(newFiles);
       };
       reader.onerror = () => {
-        const f: LoadedFile = {
-          name: file.name,
-          content: "[فشل في قراءة الملف]",
-          size: 0,
-          fileType: "Unknown",
-          isBinary: true,
-        };
-        newFiles.push(f);
         loaded++;
-        setFiles((prev) => [...prev, f]);
-        addEntry("warn", `فشل في قراءة: ${file.name}`);
-        if (loaded === fileList.length) {
-          setShowReport(newFiles);
-        }
+        if (loaded === fileList.length) setShowReport(newFiles);
       };
       reader.readAsText(file, "utf-8");
     });
   };
 
-  const removeFile = (name: string) => {
-    setFiles((prev) => prev.filter((f) => f.name !== name));
-    addEntry("info", `تم الإزالة: ${name}`);
-  };
-
   const handlePaste = () => {
     if (!pasteCode.trim()) return;
     const f: LoadedFile = {
-      name: pasteFileName || "pasted-code.txt",
-      content: pasteCode,
-      size: pasteCode.length,
-      fileType: detectFileType(pasteFileName || "pasted-code.txt", new Uint8Array(0)),
-      isBinary: false,
+      name: pasteFileName || "pasted-code.txt", content: pasteCode, size: pasteCode.length,
+      fileType: detectFileType(pasteFileName || "pasted-code.txt", new Uint8Array(0)), isBinary: false,
     };
     setFiles((prev) => [...prev, f]);
     setShowReport([f]);
-    addEntry("success", `تم تحليل الكود المُلصق (${(pasteCode.length / 1024).toFixed(1)}KB)`);
     setShowPaste(false);
     setPasteCode("");
   };
 
-  const filteredEntries = entries.filter((e) => filter ? e.text.toLowerCase().includes(filter.toLowerCase()) : true);
+  const weaponFiles = useMemo(() => files.filter((f) => isWeaponImage(f.name)), [files]);
+  const triggerData = useMemo(() => {
+    const items: { file: LoadedFile; events: string[] }[] = [];
+    for (const f of files) {
+      const events = extractServerEvents(f.content);
+      if (events.length > 0) items.push({ file: f, events });
+    }
+    return items;
+  }, [files]);
 
-  const handleExport = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    const data = entries.map((e) => `[${e.time}] [${e.type}] ${e.text}`).join("\n");
-    const blob = new Blob([data], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `trigger-forge-export-${Date.now()}.txt`;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
-    addEntry("success", "تم تصدير النتائج");
-  };
+  const filteredWeapons = useMemo(() => {
+    if (!searchW.trim()) return weaponFiles;
+    const q = searchW.toLowerCase();
+    return weaponFiles.filter((f) => f.name.toLowerCase().includes(q) || extractWeaponName(f.name).toLowerCase().includes(q));
+  }, [weaponFiles, searchW]);
 
+  const filteredTriggers = useMemo(() => {
+    if (!searchT.trim()) return triggerData;
+    const q = searchT.toLowerCase();
+    return triggerData.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.toLowerCase().includes(q)));
+  }, [triggerData, searchT]);
+
+  useEffect(() => { if (selWeapon >= filteredWeapons.length) setSelWeapon(0); }, [filteredWeapons.length, selWeapon]);
+  useEffect(() => { if (selTrigger >= filteredTriggers.length) setSelTrigger(0); }, [filteredTriggers.length, selTrigger]);
+
+  const hasFiles = files.length > 0;
   const statusDot = status === "جاهز" ? "dot-green" : status === "يعمل" ? "dot-yellow" : "dot-red";
 
   return (
-    <div
-      className="workspace-root"
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-    >
+    <div className="workspace-root" onDrop={handleDrop} onDragOver={handleDragOver} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave}>
       {dragging > 0 && (
         <div className="drop-overlay">
           <div className="drop-overlay-icon">
@@ -284,103 +214,103 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           </div>
           <div className="tc">
             <span className="status-pill"><span className={`dot ${statusDot}`} /><span>{status}</span></span>
+            {hasFiles && <span style={{ fontSize: 10, color: "var(--muted)", marginRight: 8 }}>{files.length} ملف | {triggerData.length} ترigger | {weaponFiles.length} سلاح</span>}
           </div>
           <div className="tr">
-              <button type="button" className="ti" title="رفع ملف" onClick={() => fileInputRef.current?.click()}>&#128194;</button>
-              <button type="button" className="ti" title="الإدارة (F2)" onClick={onOpenAdmin}>&#9881;&#65039;</button>
-              <button type="button" className="ti" title="القائمة">&#8942;</button>
+            <button type="button" className="ti" title="رفع ملف" onClick={() => fileInputRef.current?.click()}>&#128194;</button>
+            <button type="button" className="ti" title="لصق كود" onClick={() => setShowPaste(true)}>&#128203;</button>
+            <button type="button" className="ti" title="الإدارة" onClick={onOpenAdmin}>&#9881;&#65039;</button>
           </div>
         </nav>
 
-        <div className="work">
-          <div className="wrap">
-            <div className="canvas-area">
-              {files.length === 0 && entries.length === 0 && (
+        {!hasFiles ? (
+          <div className="work">
+            <div className="wrap">
+              <div className="canvas-area">
                 <div className="empty-state">
                   <div className="empty-icon">&#9655;</div>
-                  <p>أسقط الملفات والمجلدات هنا أو اضغط &#128194; للرفع</p>
+                  <p>أسقط الملفات والمجلدات هنا</p>
                   <p className="empty-hint">يدعم جميع أنواع الملفات والمجلدات</p>
                   <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "center" }}>
                     <button className="admin-abtn" onClick={() => setShowPaste(true)}>&#128203; لصق كود</button>
                     <button className="admin-abtn" onClick={() => fileInputRef.current?.click()}>&#128194; رفع ملف</button>
                   </div>
                 </div>
-              )}
-              {files.length > 0 && (
-                <div className="file-list">
-                  {files.map((f) => (
-                    <div key={f.name} className="file-card">
-                      <span className={`file-type-badge ${f.isBinary ? "binary" : "text"}`}>
-                        {f.fileType}
-                      </span>
-                      <div className="file-card-info">
-                        <div className="file-card-name">{f.name}</div>
-                        <div className="file-card-meta">{(f.size / 1024).toFixed(1)}KB &middot; {f.isBinary ? "ثنائي" : "نصي"}</div>
-                      </div>
-                      <button type="button" className="file-card-remove" onClick={() => removeFile(f.name)}>&times;</button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              </div>
             </div>
           </div>
+        ) : (
+          <div style={{ display: "flex", flex: 1, overflow: "hidden", direction: "ltr" }}>
 
-          <aside className="side-panel">
-            <div className="side-head">
-              <div className="seg">
-                <button type="button" className={`console-tab ${sideTab === "results" ? "active" : ""}`} onClick={() => setSideTab("results")}>النتائج</button>
-                <button type="button" className={`console-tab ${sideTab === "console" ? "active" : ""}`} onClick={() => setSideTab("console")}>الكونسول</button>
-                <button type="button" className={`console-tab ${sideTab === "files" ? "active" : ""}`} onClick={() => setSideTab("files")}>الملفات</button>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)" }}>
+              <div style={{ padding: "6px 10px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, background: "rgba(234,179,8,0.05)", direction: "rtl" }}>
+                <span style={{ color: "var(--yellow)", fontWeight: 700, fontSize: 11 }}>&#128299; أسلحة ({filteredWeapons.length})</span>
+                <input type="text" placeholder="بحث..." value={searchW} onChange={(e) => { setSearchW(e.target.value); setSelWeapon(0); }}
+                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 6px", color: "var(--fg)", fontSize: 10, outline: "none" }} />
               </div>
-              <div className="mh-spacer" />
-              <div className="mh-search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
-                <input type="text" placeholder="تصفية..." value={filter} onChange={(e) => setFilter(e.target.value)} />
-              </div>
-            </div>
-            <div className="panel-body">
-              {sideTab === "files" ? (
-                <div className="files-panel">
-                  {files.length === 0 ? (
-                    <div className="panel-empty">لا توجد ملفات محملة</div>
-                  ) : files.map((f) => (
-                    <div key={f.name} className="file-item" onClick={() => { setShowReport([f]); }}>
-                      <span className={`file-type-dot ${f.isBinary ? "dot-pink" : "dot-blue"}`} />
-                      <span className="file-name">{f.name}</span>
-                      <span className="file-size">{(f.size / 1024).toFixed(1)}KB</span>
+              <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                <div style={{ width: 150, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
+                  {filteredWeapons.length === 0 ? (
+                    <div style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 10 }}>لا توجد أسلحة</div>
+                  ) : filteredWeapons.map((f, i) => (
+                    <div key={f.name + i} onClick={() => setSelWeapon(i)} style={{
+                      padding: "5px 8px", cursor: "pointer", fontSize: 10, borderBottom: "1px solid var(--border)",
+                      background: selWeapon === i ? "rgba(234,179,8,0.1)" : "transparent",
+                      borderLeft: selWeapon === i ? "2px solid var(--yellow)" : "2px solid transparent",
+                    }}>
+                      <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{extractWeaponName(f.name)}</div>
+                      <div style={{ fontSize: 8, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="console-body">
-                  {filteredEntries.length === 0 ? (
-                    <div className="panel-empty">{sideTab === "results" ? "لا توجد نتائج بعد" : "الكونسول في وضع السكون"}</div>
-                  ) : filteredEntries.map((e) => (
-                    <div key={e.id} className={`entry entry-${e.type}`}>
-                      <span className="entry-time">[{e.time}]</span>
-                      <span className="entry-text">{e.text}</span>
+                <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {filteredWeapons[selWeapon] ? (
+                    <WeaponPreview file={filteredWeapons[selWeapon]} />
+                  ) : (
+                    <div style={{ color: "var(--muted)", fontSize: 11 }}>اختر سلاح</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <div style={{ padding: "6px 10px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, background: "rgba(239,68,68,0.05)", direction: "rtl" }}>
+                <span style={{ color: "var(--red)", fontWeight: 700, fontSize: 11 }}>&#9889; TriggerServerEvent ({filteredTriggers.length})</span>
+                <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => { setSearchT(e.target.value); setSelTrigger(0); }}
+                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 6px", color: "var(--fg)", fontSize: 10, outline: "none" }} />
+                <button onClick={() => {
+                  let text = "";
+                  filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((n) => { text += `  TriggerServerEvent("${n}")\n`; }); text += "\n"; });
+                  navigator.clipboard.writeText(text);
+                }} style={{ fontSize: 9, padding: "2px 8px", background: "var(--red)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}>نسخ</button>
+              </div>
+              <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                <div style={{ width: 150, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
+                  {filteredTriggers.length === 0 ? (
+                    <div style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 10 }}>لا توجد ترiggerات</div>
+                  ) : filteredTriggers.map((item, i) => (
+                    <div key={item.file.name + i} onClick={() => setSelTrigger(i)} style={{
+                      padding: "5px 8px", cursor: "pointer", fontSize: 10, borderBottom: "1px solid var(--border)",
+                      background: selTrigger === i ? "rgba(239,68,68,0.1)" : "transparent",
+                      borderLeft: selTrigger === i ? "2px solid var(--red)" : "2px solid transparent",
+                    }}>
+                      <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.file.name}</div>
+                      <div style={{ fontSize: 8, color: "var(--muted)" }}>{item.events.length} حدث</div>
                     </div>
                   ))}
-                  <div ref={consoleEndRef} />
                 </div>
-              )}
+                <div style={{ flex: 1, overflowY: "auto", padding: 16, direction: "rtl" }}>
+                  {filteredTriggers[selTrigger] ? (
+                    <TriggerDetail item={filteredTriggers[selTrigger]} />
+                  ) : (
+                    <div style={{ color: "var(--muted)", fontSize: 11, textAlign: "center", paddingTop: 40 }}>اختر ملف</div>
+                  )}
+                </div>
+              </div>
             </div>
-          </aside>
-        </div>
-      </div>
 
-      <div className="bottom-bar">
-        <button type="button" className="bbtn" title="إجراءات سريعة">&#9776;</button>
-        <button type="button" className="bbtn" title="لصق كود" onClick={() => setShowPaste(true)}>&#128203;</button>
-        <button type="button" className="bbtn" title="تحميل الملفات" onClick={() => fileInputRef.current?.click()}>&#128194;</button>
-        <div className="bsp" />
-        <span className="console-status"><span className={`console-dot ${statusDot}`} /><span>{status}</span></span>
-        <div className="bsp" />
-        <input type="text" className="bb-input" placeholder="TriggerServerEvent, giveItem..." value={customInput} onChange={(e) => setCustomInput(e.target.value)} onKeyDown={handleKeyDown} spellCheck={false} />
-        <div className="bsp" />
-        <button type="button" className="bbtn" title="Webhooks">&#128279;</button>
-        <button type="button" className="bbtn" title="تصدير" onClick={(e) => handleExport(e)}>&#128229;</button>
-        <button type="button" className="bbtn gr" onClick={handleRun}>&#9654; تشغيل</button>
+          </div>
+        )}
       </div>
 
       <input ref={fileInputRef} type="file" className="hidden-file" multiple onChange={handleFileInput} />
@@ -395,48 +325,67 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", gap: 8 }}>
                 <label style={{ color: "var(--fg)", fontSize: 13, alignSelf: "center" }}>اسم الملف:</label>
-                <input
-                  type="text"
-                  value={pasteFileName}
-                  onChange={(e) => setPasteFileName(e.target.value)}
-                  className="bb-input"
-                  style={{ flex: 1 }}
-                  placeholder="script.lua"
-                  spellCheck={false}
-                />
+                <input type="text" value={pasteFileName} onChange={(e) => setPasteFileName(e.target.value)} className="bb-input" style={{ flex: 1 }} placeholder="script.lua" spellCheck={false} />
               </div>
-              <textarea
-                value={pasteCode}
-                onChange={(e) => setPasteCode(e.target.value)}
-                placeholder="الصق الكود هنا... (TriggerServerEvent, TriggerClientEvent, RegisterNetEvent...)"
-                style={{
-                  width: "100%",
-                  minHeight: 300,
-                  background: "var(--bg)",
-                  color: "var(--fg)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  padding: 12,
-                  fontFamily: "monospace",
-                  fontSize: 13,
-                  resize: "vertical",
-                  direction: "ltr",
-                }}
-                spellCheck={false}
-                autoFocus
-              />
+              <textarea value={pasteCode} onChange={(e) => setPasteCode(e.target.value)} placeholder="الصق الكود هنا..."
+                style={{ width: "100%", minHeight: 300, background: "var(--bg)", color: "var(--fg)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, fontFamily: "monospace", fontSize: 13, resize: "vertical", direction: "ltr" }}
+                spellCheck={false} autoFocus />
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                 <button className="admin-abtn" onClick={() => setShowPaste(false)}>إلغاء</button>
-                <button className="admin-abtn gr" onClick={handlePaste} disabled={!pasteCode.trim()}>تحليل الكود</button>
+                <button className="admin-abtn gr" onClick={handlePaste} disabled={!pasteCode.trim()}>تحليل</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {showReport && (
-        <FileReportModal files={showReport} onClose={() => setShowReport(null)} />
-      )}
+      {showReport && <FileReportModal files={showReport} onClose={() => setShowReport(null)} />}
+    </div>
+  );
+}
+
+function WeaponPreview({ file }: { file: LoadedFile }) {
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const weaponName = extractWeaponName(file.name);
+  useEffect(() => {
+    if (file.rawFile) {
+      const url = URL.createObjectURL(file.rawFile);
+      setImgUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [file.rawFile]);
+  return (
+    <div style={{ textAlign: "center" }}>
+      {imgUrl && <div style={{ marginBottom: 12 }}><img src={imgUrl} alt={weaponName} style={{ width: 150, height: 150, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)" }} /></div>}
+      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--yellow)", marginBottom: 4 }}>{weaponName}</div>
+      <div style={{ fontSize: 10, color: "var(--muted)" }}>{file.name}</div>
+      <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 2 }}>{formatSize(file.size)}</div>
+    </div>
+  );
+}
+
+function TriggerDetail({ item }: { item: { file: LoadedFile; events: string[] } }) {
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+        <span style={{ fontSize: 16 }}>&#9889;</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--red)" }}>{item.file.name}</div>
+          <div style={{ fontSize: 10, color: "var(--muted)" }}>{item.events.length} TriggerServerEvent</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {item.events.map((name, i) => (
+          <div key={i} style={{
+            padding: "6px 10px", background: "var(--bg)", borderRadius: 4, fontSize: 11, fontFamily: "monospace",
+            color: "var(--yellow)", border: "1px solid var(--border)", direction: "ltr", textAlign: "left",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <span style={{ fontSize: 8, fontWeight: 700, color: "#fff", background: "var(--red)", padding: "1px 4px", borderRadius: 3, whiteSpace: "nowrap" }}>TSE</span>
+            {name}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
