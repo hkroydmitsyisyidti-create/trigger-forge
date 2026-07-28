@@ -24,9 +24,37 @@ export interface AnalysisItem {
   line?: number;
 }
 
+function scanFiveMEvents(content: string, lines: string[]): { triggerEvents: { name: string; type: string; line: number }[]; fivemFound: boolean } {
+  const triggerEvents: { name: string; type: string; line: number }[] = [];
+  const patterns = [
+    { type: "TriggerServerEvent", re: /TriggerServerEvent\s*\(\s*["']([^"']+)["']/ },
+    { type: "TriggerClientEvent", re: /TriggerClientEvent\s*\(\s*["']([^"']+)["']/ },
+    { type: "RegisterNetEvent", re: /RegisterNetEvent\s*\(\s*["']([^"']+)["']/ },
+    { type: "AddEventHandler", re: /AddEventHandler\s*\(\s*["']([^"']+)["']/ },
+    { type: "TriggerEvent", re: /TriggerEvent\s*\(\s*["']([^"']+)["']/ },
+  ];
+  lines.forEach((line, idx) => {
+    const ln = idx + 1;
+    const t = line.trim();
+    for (const p of patterns) {
+      const m = t.match(p.re);
+      if (m && !triggerEvents.find(e => e.name === m[1] && e.type === p.type && e.line === ln))
+        triggerEvents.push({ name: m[1], type: p.type, line: ln });
+    }
+  });
+
+  const fivemRe = /TriggerServerEvent|TriggerClientEvent|RegisterNetEvent|AddEventHandler|TriggerEvent|Citizen\.CreateThread|Citizen\.Wait|exports\s*\[\s*["']/;
+  const fivemFound = fivemRe.test(content);
+  return { triggerEvents, fivemFound };
+}
+
 export function analyzeFile(name: string, content: string, size: number, isBinary: boolean, strings?: string[]): AnalysisResult {
   const ext = "." + name.split(".").pop()?.toLowerCase();
   const isEmpty = size === 0 || content.trim().length === 0;
+
+  const analyzeContent = isBinary ? (strings || []).join("\n") : content;
+  const lines = analyzeContent.split("\n");
+  const { triggerEvents, fivemFound } = scanFiveMEvents(analyzeContent, lines);
 
   if (isEmpty) {
     return {
@@ -42,15 +70,21 @@ export function analyzeFile(name: string, content: string, size: number, isBinar
     };
   }
 
-  const hasFiveMContent = /TriggerServerEvent|TriggerClientEvent|RegisterNetEvent|AddEventHandler|TriggerEvent|game\s*:\s*GetService|Citizen\.CreateThread|Citizen\.Wait/i.test(content);
-
-  if (hasFiveMContent && ext !== ".lua" && ext !== ".luau") {
-    return analyzeLua(name, content, size);
+  if (fivemFound || ext === ".lua" || ext === ".luau") {
+    const result = analyzeLua(name, analyzeContent, size);
+    if (triggerEvents.length > 0 && !result.sections.find(s => s.title.includes("Trigger"))) {
+      result.sections.unshift({
+        title: "أحداث FiveM (Trigger Events)",
+        color: "var(--red)",
+        icon: "\u26A1",
+        items: triggerEvents.map((e) => ({ label: `${e.type}("${e.name}")`, type: "warning" as const, line: e.line, value: e.type })),
+      });
+    }
+    if (isBinary) result.fileType = "ثنائي + Lua";
+    return result;
   }
 
   const analyzers: Record<string, () => AnalysisResult> = {
-    ".lua": () => analyzeLua(name, content, size),
-    ".luau": () => analyzeLua(name, content, size),
     ".py": () => analyzePython(name, content, size),
     ".js": () => analyzeJavaScript(name, content, size),
     ".ts": () => analyzeTypeScript(name, content, size),
@@ -87,15 +121,28 @@ export function analyzeFile(name: string, content: string, size: number, isBinar
     ".dockerfile": () => analyzeDocker(name, content, size),
   };
 
-  if (isBinary) {
+  if (isBinary && !fivemFound) {
     return analyzeBinary(name, size, strings || []);
   }
 
+  let result: AnalysisResult;
   if (analyzers[ext]) {
-    return analyzers[ext]();
+    result = analyzers[ext]();
+  } else {
+    result = analyzeGeneric(name, content, size);
   }
 
-  return analyzeGeneric(name, content, size);
+  if (triggerEvents.length > 0) {
+    result.sections.unshift({
+      title: "أحداث FiveM (Trigger Events)",
+      color: "var(--red)",
+      icon: "\u26A1",
+      items: triggerEvents.map((e) => ({ label: `${e.type}("${e.name}")`, type: "warning" as const, line: e.line, value: e.type })),
+    });
+    if (result.fileType !== "نص") result.fileType += " + FiveM";
+  }
+
+  return result;
 }
 
 function analyzeLua(name: string, content: string, size: number): AnalysisResult {

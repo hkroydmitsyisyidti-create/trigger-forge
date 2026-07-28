@@ -122,17 +122,16 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           content = "[Empty file]";
           isBinary = true;
         } else {
-          const nullCount = Array.from(uint8.slice(0, Math.min(uint8.length, 512))).filter(b => b === 0).length;
-          if (nullCount > 10 || (uint8.length > 0 && nullCount / Math.min(uint8.length, 512) > 0.05)) {
+          try {
+            content = new TextDecoder("utf-8").decode(uint8);
+          } catch {
+            content = strings.join("\n") || "[Cannot decode file]";
             isBinary = true;
-            content = strings.join("\n") || "[Binary file with no readable strings]";
-          } else {
-            try {
-              content = new TextDecoder("utf-8").decode(uint8);
-            } catch {
-              content = strings.join("\n") || "[Cannot decode file]";
-              isBinary = true;
-            }
+          }
+
+          if (!isBinary && content.includes("\0")) {
+            isBinary = true;
+            content = strings.join("\n") || content;
           }
         }
 
