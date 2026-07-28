@@ -364,7 +364,46 @@ function analyzeText(name: string, content: string, size: number): AnalysisResul
   const lines = content.split("\n");
   const words = content.split(/\s+/).filter((w) => w).length;
   const chars = content.length;
-  return { fileType: "نص", fileName: name, fileSize: size, isBinary: false, isEmpty: false, summary: `ملف نصي: ${lines.length} سطر، ${words} كلمة، ${chars} حرف.`, sections: [{ title: "الإحصائيات", color: "var(--cyan)", icon: "i", items: [{ label: `${lines.length} سطر` }, { label: `${words} كلمة` }, { label: `${chars} حرف` }] }], recommendations: [], warnings: [] };
+
+  const triggerEvents: { name: string; type: string; line: number }[] = [];
+  const warnings: string[] = [];
+  const recommendations: string[] = [];
+
+  lines.forEach((line, idx) => {
+    const ln = idx + 1;
+    const t = line.trim();
+
+    const triggerServerMatch = t.match(/TriggerServerEvent\s*\(\s*["']([^"']+)["']/);
+    if (triggerServerMatch) triggerEvents.push({ name: triggerServerMatch[1], type: "TriggerServerEvent", line: ln });
+
+    const triggerClientMatch = t.match(/TriggerClientEvent\s*\(\s*["']([^"']+)["']/);
+    if (triggerClientMatch) triggerEvents.push({ name: triggerClientMatch[1], type: "TriggerClientEvent", line: ln });
+
+    const registerNetMatch = t.match(/RegisterNetEvent\s*\(\s*["']([^"']+)["']/);
+    if (registerNetMatch) triggerEvents.push({ name: registerNetMatch[1], type: "RegisterNetEvent", line: ln });
+
+    const addEventHandlerMatch = t.match(/AddEventHandler\s*\(\s*["']([^"']+)["']/);
+    if (addEventHandlerMatch) triggerEvents.push({ name: addEventHandlerMatch[1], type: "AddEventHandler", line: ln });
+
+    const triggerEventMatch = t.match(/TriggerEvent\s*\(\s*["']([^"']+)["']/);
+    if (triggerEventMatch) triggerEvents.push({ name: triggerEventMatch[1], type: "TriggerEvent", line: ln });
+  });
+
+  const sections: AnalysisSection[] = [
+    { title: "الإحصائيات", color: "var(--cyan)", icon: "i", items: [{ label: `${lines.length} سطر` }, { label: `${words} كلمة` }, { label: `${chars} حرف` }] },
+  ];
+
+  if (triggerEvents.length > 0) {
+    sections.push({
+      title: "أحداث FiveM (Trigger)",
+      color: "var(--red)",
+      icon: "\u26A1",
+      items: triggerEvents.map((e) => ({ label: `${e.type}("${e.name}")`, type: "warning" as const, line: e.line, value: e.type })),
+    });
+    recommendations.push(`تم العثور على ${triggerEvents.length} حدث trigger - راجع أسماء الأحداث والمعلمات`);
+  }
+
+  return { fileType: "نص", fileName: name, fileSize: size, isBinary: false, isEmpty: false, summary: `ملف نصي: ${lines.length} سطر، ${words} كلمة، ${chars} حرف.${triggerEvents.length > 0 ? ` ${triggerEvents.length} حدث trigger مكتشف!` : ""}`, sections, recommendations, warnings };
 }
 
 function analyzeCSV(name: string, content: string, size: number): AnalysisResult {
