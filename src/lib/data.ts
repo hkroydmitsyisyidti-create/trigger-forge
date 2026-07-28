@@ -49,7 +49,7 @@ const DEFAULT_DB: DB = {
     },
   ],
   admins: [
-    { id: "admin-1", username: "admin", password: "admin", role: "owner" },
+    { id: "admin-1", username: "salom9202", password: "salom9202", role: "owner" },
   ],
   logs: [
     {
@@ -105,6 +105,13 @@ function getDurationLabel(d: string): string {
 
 export function getDB(): DB {
   try {
+    const DB_VERSION = "2";
+    const currentVersion = localStorage.getItem("triggerforge_version");
+    if (currentVersion !== DB_VERSION) {
+      localStorage.setItem("triggerforge_db", JSON.stringify(DEFAULT_DB));
+      localStorage.setItem("triggerforge_version", DB_VERSION);
+      return DEFAULT_DB;
+    }
     const raw = localStorage.getItem("triggerforge_db");
     if (!raw) {
       localStorage.setItem("triggerforge_db", JSON.stringify(DEFAULT_DB));
