@@ -6,11 +6,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api/groq': {
-        target: 'https://api.groq.com',
+      '/api': {
+        target: 'http://localhost:3000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/groq/, ''),
-        secure: true,
       },
     },
   },

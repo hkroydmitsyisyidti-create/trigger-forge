@@ -1,5 +1,3 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-
 let _db: any = null;
 
 function getDefaults() {
@@ -17,8 +15,8 @@ function getDefaults() {
     admins: [
       { id: "admin-1", username: "salom9202", password: "salom9202", role: "owner" },
     ],
-    logs: [],
-    bans: [],
+    logs: [] as any[],
+    bans: [] as any[],
     accessKeys: ["TF-XXXX-YYYY-ZZZZ"],
   };
 }
@@ -32,211 +30,99 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-function generateKeyString() {
+function genKey() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const segments = ["TF"];
+  const segs = ["TF"];
   for (let s = 0; s < 3; s++) {
     let seg = "";
-    for (let i = 0; i < 4; i++) {
-      seg += chars[Math.floor(Math.random() * chars.length)];
-    }
-    segments.push(seg);
+    for (let i = 0; i < 4; i++) seg += chars[Math.floor(Math.random() * chars.length)];
+    segs.push(seg);
   }
-  return segments.join("-");
+  return segs.join("-");
 }
 
-function getExpiry(duration: string) {
-  const now = Date.now();
-  const map: Record<string, number> = {
-    "1h": 60 * 60 * 1000,
-    "1d": 24 * 60 * 60 * 1000,
-    "30d": 30 * 24 * 60 * 60 * 1000,
-    "60d": 60 * 24 * 60 * 60 * 1000,
-    lifetime: 365 * 24 * 60 * 60 * 1000,
-  };
-  return new Date(now + (map[duration] || map["30d"])).toISOString();
+function expiry(dur: string) {
+  const m: Record<string, number> = { "1h": 36e5, "1d": 864e5, "30d": 2592e6, "60d": 5184e6, lifetime: 31536e6 };
+  return new Date(Date.now() + (m[dur] || m["30d"])).toISOString();
 }
 
-function getDurationLabel(d: string) {
-  const m: Record<string, string> = {
-    "1h": "1 Hour",
-    "1d": "1 Day",
-    "30d": "30 Days",
-    "60d": "60 Days",
-    lifetime: "Lifetime",
-  };
-  return m[d] || d;
-}
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const action = req.method === "GET" ? (req.query.action as string) : req.body?.action;
-
-    if (!action) {
-      return res.status(400).json({ error: "action is required" });
-    }
+    const { action } = req.body || {};
+    if (!action) return res.status(400).json({ error: "action required" });
 
     const db = getDB();
 
     if (action === "verify") {
-      const key = req.method === "GET" ? (req.query.key as string) : req.body?.key;
-      const fingerprint = req.method === "GET" ? (req.query.fingerprint as string) : req.body?.fingerprint;
-
-      if (!key) {
-        return res.status(400).json({ valid: false, error: "Key is required" });
-      }
-
-      const keyEntry = db.keys.find((k: any) => k.key === key);
-
-      if (!keyEntry) {
-        return res.status(401).json({ valid: false, error: "Invalid key" });
-      }
-
-      if (new Date(keyEntry.expiresAt) < new Date()) {
-        return res.status(401).json({ valid: false, error: "Key has expired" });
-      }
-
-      if (keyEntry.bound && fingerprint && keyEntry.bound !== fingerprint) {
-        return res.status(401).json({ valid: false, error: "Key is bound to another device" });
-      }
-
-      if (!keyEntry.bound && fingerprint) {
-        keyEntry.bound = fingerprint;
-      }
-
-      const isBanned = db.bans.some((b: any) => {
-        if (b.kind === "key" && b.value === key) {
-          if (!b.until || new Date(b.until) > new Date()) return true;
-        }
-        return false;
-      });
-
-      if (isBanned) {
-        return res.status(403).json({ valid: false, error: "Key has been banned" });
-      }
-
-      return res.status(200).json({ valid: true, key: keyEntry.key, duration: keyEntry.duration });
+      const { key, fingerprint } = req.body;
+      if (!key) return res.status(400).json({ valid: false, error: "Key required" });
+      const entry = db.keys.find((k: any) => k.key === key);
+      if (!entry) return res.status(401).json({ valid: false, error: "Invalid key" });
+      if (new Date(entry.expiresAt) < new Date()) return res.status(401).json({ valid: false, error: "Key expired" });
+      if (entry.bound && fingerprint && entry.bound !== fingerprint) return res.status(401).json({ valid: false, error: "Key bound to another device" });
+      if (!entry.bound && fingerprint) entry.bound = fingerprint;
+      if (db.bans.some((b: any) => b.kind === "key" && b.value === key && new Date(b.until) > new Date())) return res.status(403).json({ valid: false, error: "Key banned" });
+      return res.status(200).json({ valid: true });
     }
 
     if (action === "login") {
-      const { username, password } = req.body || {};
-      const admin = db.admins.find((a: any) => a.username === username && a.password === password);
-      if (!admin) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
-      return res.status(200).json({ success: true, role: admin.role });
+      const { username, password } = req.body;
+      const a = db.admins.find((x: any) => x.username === username && x.password === password);
+      return a ? res.status(200).json({ success: true }) : res.status(401).json({ error: "Invalid credentials" });
     }
 
     if (action === "generateKey") {
-      const duration = req.body?.keyData?.duration || "30d";
-      const keyString = generateKeyString();
-      const key = {
-        id: uid(),
-        key: keyString,
-        duration,
-        bound: "",
-        createdAt: new Date().toISOString(),
-        expiresAt: getExpiry(duration),
-      };
-      db.keys.push(key);
-      db.accessKeys.push(keyString);
-      db.logs.unshift({
-        id: uid(),
-        date: new Date().toISOString(),
-        ip: (req.headers["x-forwarded-for"] as string) || "unknown",
-        action: `Generated key: ${keyString} (${getDurationLabel(duration)})`,
-      });
-      return res.status(200).json({ key });
+      const dur = req.body.keyData?.duration || "30d";
+      const k = { id: uid(), key: genKey(), duration: dur, bound: "", createdAt: new Date().toISOString(), expiresAt: expiry(dur) };
+      db.keys.push(k);
+      return res.status(200).json({ key: k });
     }
 
     if (action === "deleteKey") {
-      const keyId = req.body?.keyId;
-      const key = db.keys.find((k: any) => k.id === keyId);
-      db.accessKeys = db.accessKeys.filter((k: string) => k !== key?.key);
-      db.keys = db.keys.filter((k: any) => k.id !== keyId);
-      db.logs.unshift({
-        id: uid(),
-        date: new Date().toISOString(),
-        ip: (req.headers["x-forwarded-for"] as string) || "unknown",
-        action: `Deleted key: ${key?.key || keyId}`,
-      });
+      db.keys = db.keys.filter((k: any) => k.id !== req.body.keyId);
       return res.status(200).json({ success: true });
     }
 
-    if (action === "getKeys") {
-      return res.status(200).json({ keys: db.keys });
-    }
-
-    if (action === "getLogs") {
-      return res.status(200).json({ logs: db.logs.slice(0, 100) });
-    }
-
-    if (action === "getAdmins") {
-      return res.status(200).json({ admins: db.admins });
-    }
+    if (action === "getKeys") return res.status(200).json({ keys: db.keys });
+    if (action === "getLogs") return res.status(200).json({ logs: db.logs.slice(0, 100) });
+    if (action === "getAdmins") return res.status(200).json({ admins: db.admins });
 
     if (action === "addAdmin") {
-      const { username, password } = req.body || {};
-      const exists = db.admins.find((a: any) => a.username === username);
-      if (exists) {
-        return res.status(400).json({ error: "Admin already exists" });
-      }
-      const admin = { id: uid(), username: username || "", password: password || "", role: "admin" };
-      db.admins.push(admin);
-      db.logs.unshift({
-        id: uid(),
-        date: new Date().toISOString(),
-        ip: (req.headers["x-forwarded-for"] as string) || "unknown",
-        action: `Added admin: ${username}`,
-      });
-      return res.status(200).json({ admin });
+      const { username, password } = req.body;
+      if (db.admins.find((a: any) => a.username === username)) return res.status(400).json({ error: "Exists" });
+      const a = { id: uid(), username, password, role: "admin" };
+      db.admins.push(a);
+      return res.status(200).json({ admin: a });
     }
 
     if (action === "deleteAdmin") {
-      const id = req.body?.keyId;
-      db.admins = db.admins.filter((a: any) => a.id !== id);
+      db.admins = db.admins.filter((a: any) => a.id !== req.body.keyId);
       return res.status(200).json({ success: true });
     }
 
-    if (action === "getBans") {
-      return res.status(200).json({ bans: db.bans });
-    }
+    if (action === "getBans") return res.status(200).json({ bans: db.bans });
 
     if (action === "addBan") {
-      const { banKind, banValue, banReason, banDuration } = req.body || {};
-      const ban = {
-        id: uid(),
-        kind: banKind || "key",
-        value: banValue || "",
-        reason: banReason || "",
-        until: getExpiry(banDuration || "30d"),
-      };
-      db.bans.push(ban);
-      db.logs.unshift({
-        id: uid(),
-        date: new Date().toISOString(),
-        ip: (req.headers["x-forwarded-for"] as string) || "unknown",
-        action: `Banned ${banKind}: ${banValue} (${banReason})`,
-      });
-      return res.status(200).json({ ban });
+      const { banKind, banValue, banReason, banDuration } = req.body;
+      const b = { id: uid(), kind: banKind, value: banValue, reason: banReason, until: expiry(banDuration || "30d") };
+      db.bans.push(b);
+      return res.status(200).json({ ban: b });
     }
 
     if (action === "deleteBan") {
-      const id = req.body?.keyId;
-      db.bans = db.bans.filter((b: any) => b.id !== id);
+      db.bans = db.bans.filter((b: any) => b.id !== req.body.keyId);
       return res.status(200).json({ success: true });
     }
 
     return res.status(400).json({ error: "Unknown action" });
-  } catch (err) {
-    return res.status(500).json({ error: "Internal server error" });
+  } catch (e) {
+    return res.status(500).json({ error: "Server error: " + String(e) });
   }
 }
