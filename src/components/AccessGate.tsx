@@ -17,10 +17,10 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
 
     try {
       const fingerprint = await generateFingerprint();
-      const res = await fetch("/api/verify", {
+      const res = await fetch("/api/index", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: key.trim(), fingerprint }),
+        body: JSON.stringify({ action: "verify", key: key.trim(), fingerprint }),
       });
 
       const data = await res.json();

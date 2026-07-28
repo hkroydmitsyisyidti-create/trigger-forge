@@ -13,7 +13,7 @@ function getDurationLabel(d: string) {
 }
 
 async function api(action: string, data: Record<string, unknown> = {}) {
-  const res = await fetch("/api/admin", {
+  const res = await fetch("/api/index", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action, ...data }),
