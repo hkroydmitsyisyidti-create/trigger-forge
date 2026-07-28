@@ -394,7 +394,9 @@ function TriggerDetail({ item }: { item: { file: LoadedFile; events: { name: str
             display: "flex", alignItems: "center", gap: 6,
           }}>
             <span style={{ fontSize: 8, fontWeight: 700, color: "#fff", background: "var(--red)", padding: "1px 4px", borderRadius: 3, whiteSpace: "nowrap" }}>TSE</span>
-            <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--yellow)", flex: 1 }}>{e.name}</span>
+            <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--yellow)", flex: 1 }}>
+              <span style={{ color: "var(--muted)" }}>TriggerServerEvent(</span>"<span style={{ color: "var(--green)" }}>{e.name}</span>"<span style={{ color: "var(--muted)" }}>)</span>
+            </span>
             <span style={{ fontSize: 8, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
             <button
               onClick={() => navigator.clipboard.writeText(`TriggerServerEvent("${e.name}")`)}
