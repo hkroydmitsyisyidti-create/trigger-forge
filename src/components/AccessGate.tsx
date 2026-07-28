@@ -1,20 +1,45 @@
 import { useState, useEffect } from "react";
-import { verifyAccessKey } from "../lib/data";
+import { generateFingerprint } from "../lib/fingerprint";
 
 export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
   const [key, setKey] = useState("");
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { setLoaded(true); }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (verifyAccessKey(key)) {
-      localStorage.setItem("triggerforge_unlocked", "true");
-      onUnlock();
-    } else {
-      setError("Invalid access key");
+    if (!key.trim()) return;
+    setLoading(true);
+    setError("");
+
+    try {
+      const fingerprint = await generateFingerprint();
+      const res = await fetch("/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: key.trim(), fingerprint }),
+      });
+
+      const data = await res.json();
+
+      if (data.valid) {
+        localStorage.setItem("triggerforge_unlocked", "true");
+        localStorage.setItem("triggerforge_key", key.trim());
+        onUnlock();
+      } else {
+        setError(data.error === "Invalid key" ? "كي غير صحيح" :
+                 data.error === "Key has expired" ? "انتهت صلاحية الكي" :
+                 data.error === "Key is bound to another device" ? "الكي مربوط بجهاز آخر" :
+                 data.error === "Key has been banned" ? "تم حظر هذا الكي" :
+                 "خطأ في التحقق");
+      }
+    } catch {
+      setError("خطأ في الاتصال بالخادم");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -28,10 +53,10 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
           </svg>
         </div>
         <h2>Trigger Forge</h2>
-        <p>Enter your access key to open the workspace</p>
+        <p>أدخل مفتاح الوصول لفتح مساحة العمل</p>
         <form onSubmit={handleSubmit} autoComplete="off">
-          <input type="password" className="field mono" placeholder="Paste your key" value={key} onChange={(e) => { setKey(e.target.value); setError(""); }} autoComplete="current-password" />
-          <button className="cta" type="submit">Unlock</button>
+          <input type="password" className="field mono" placeholder="الصق المفتاح هنا" value={key} onChange={(e) => { setKey(e.target.value); setError(""); }} autoComplete="current-password" />
+          <button className="cta" type="submit" disabled={loading}>{loading ? "جاري التحقق..." : "فتح"}</button>
           {error && <p className="form-error">{error}</p>}
         </form>
       </div>
