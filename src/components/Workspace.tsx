@@ -40,7 +40,9 @@ function extractWeaponName(filename: string): string {
 }
 
 function isVehicleImage(name: string): boolean {
-  return /^(vehicle|car)[_\-]/i.test(name) && /\.(png|jpg|jpeg|webp)$/i.test(name);
+  if (!/\.(png|jpg|jpeg|webp)$/i.test(name)) return false;
+  if (isWeaponImage(name)) return false;
+  return true;
 }
 
 function extractVehicleName(filename: string): string {
