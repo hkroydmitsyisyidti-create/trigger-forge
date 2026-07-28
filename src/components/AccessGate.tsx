@@ -61,10 +61,6 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
           </button>
           {error && <p className="form-error">{error}</p>}
         </form>
-
-        <button className="admin-close-link" onClick={onUnlock}>
-          تخطي للتجربة
-        </button>
       </div>
 
       <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", maxWidth: 380, lineHeight: 1.6 }}>
