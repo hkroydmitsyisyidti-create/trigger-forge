@@ -11,13 +11,24 @@ function loadDb() {
   try {
     const raw = localStorage.getItem("triggerforge_db");
     if (!raw) {
-      const def = { keys: [], logs: [], admins: [{ id: "admin-1", username: "salom9202", role: "owner" }], accessKeys: [] };
+      const def = { keys: [], logs: [], admins: [{ id: "admin-1", username: "salom9202", password: "salom9202", role: "owner" }], accessKeys: [] };
       localStorage.setItem("triggerforge_db", JSON.stringify(def));
       return def;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (parsed.admins && !parsed.admins.find((a: any) => a.username === "salom9202")) {
+      parsed.admins.unshift({ id: "admin-1", username: "salom9202", password: "salom9202", role: "owner" });
+      localStorage.setItem("triggerforge_db", JSON.stringify(parsed));
+    }
+    parsed.admins = parsed.admins.map((a: any) => {
+      if (a.username === "salom9202" && !a.password) {
+        return { ...a, password: "salom9202" };
+      }
+      return a;
+    });
+    return parsed;
   } catch {
-    return { keys: [], logs: [], admins: [], accessKeys: [] };
+    return { keys: [], logs: [], admins: [{ id: "admin-1", username: "salom9202", password: "salom9202", role: "owner" }], accessKeys: [] };
   }
 }
 
@@ -153,15 +164,19 @@ function LogsPanel({ db }: { db: any }) {
 function AdminsPanel({ db, refresh }: { db: any; refresh: () => void }) {
   const [newUser, setNewUser] = useState("");
   const [newPass, setNewPass] = useState("");
+  const [newRole, setNewRole] = useState("admin");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingRole, setEditingRole] = useState("");
 
   const handleAdd = () => {
     if (!newUser.trim() || !newPass.trim()) return;
     if (db.admins.find((a: AdminEntry) => a.username === newUser.trim())) return;
-    db.admins.push({ id: uid(), username: newUser.trim(), role: "admin" });
-    db.logs.unshift({ id: uid(), date: new Date().toISOString(), action: `إضافة مدير: ${newUser.trim()}` });
+    db.admins.push({ id: uid(), username: newUser.trim(), password: newPass.trim(), role: newRole });
+    db.logs.unshift({ id: uid(), date: new Date().toISOString(), action: `إضافة مدير: ${newUser.trim()} (${newRole})` });
     saveDb(db);
     setNewUser("");
     setNewPass("");
+    setNewRole("admin");
     refresh();
   };
 
@@ -173,11 +188,30 @@ function AdminsPanel({ db, refresh }: { db: any; refresh: () => void }) {
     refresh();
   };
 
+  const handleRoleChange = (id: string) => {
+    if (!editingRole.trim()) return;
+    const a = db.admins.find((x: AdminEntry) => x.id === id);
+    if (a) {
+      const oldRole = a.role;
+      a.role = editingRole.trim();
+      db.logs.unshift({ id: uid(), date: new Date().toISOString(), action: `تغيير دور ${a.username}: ${oldRole} → ${editingRole.trim()}` });
+      saveDb(db);
+    }
+    setEditingId(null);
+    setEditingRole("");
+    refresh();
+  };
+
   return (
     <>
       <div className="admin-form-row">
         <input type="text" className="admin-inp flex-1" placeholder="اسم المستخدم" value={newUser} onChange={(e) => setNewUser(e.target.value)} />
         <input type="password" className="admin-inp flex-1" placeholder="كلمة المرور" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
+        <select className="admin-sel flex-1" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
+          <option value="admin">مدير (admin)</option>
+          <option value="moderator">مشرف (moderator)</option>
+          <option value="viewer">مشاهد (viewer)</option>
+        </select>
         <button className="admin-abtn gr" onClick={handleAdd}>+ إضافة</button>
       </div>
       <div className="admin-table-wrap">
@@ -187,7 +221,25 @@ function AdminsPanel({ db, refresh }: { db: any; refresh: () => void }) {
             {db.admins.map((a: AdminEntry) => (
               <tr key={a.id}>
                 <td>{a.username}</td>
-                <td><span className={`role-badge role-${a.role}`}>{a.role}</span></td>
+                <td>
+                  {editingId === a.id ? (
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                      <select className="admin-sel" value={editingRole} onChange={(e) => setEditingRole(e.target.value)} style={{ fontSize: 11, padding: "3px 6px" }}>
+                        <option value="owner">owner</option>
+                        <option value="admin">admin</option>
+                        <option value="moderator">moderator</option>
+                        <option value="viewer">viewer</option>
+                      </select>
+                      <button className="admin-abtn sm gr" onClick={() => handleRoleChange(a.id)}>✓</button>
+                      <button className="admin-abtn sm" onClick={() => { setEditingId(null); setEditingRole(""); }}>✕</button>
+                    </div>
+                  ) : (
+                    <span className={`role-badge role-${a.role}`} style={{ cursor: a.role !== "owner" ? "pointer" : "default" }}
+                      onClick={() => { if (a.role !== "owner") { setEditingId(a.id); setEditingRole(a.role); } }}>
+                      {a.role}
+                    </span>
+                  )}
+                </td>
                 <td className="text-right">{a.role !== "owner" && <button className="admin-abtn sm pk" onClick={() => handleDelete(a.id)}>حذف</button>}</td>
               </tr>
             ))}
