@@ -49,7 +49,7 @@ const DEFAULT_DB: DB = {
     },
   ],
   admins: [
-    { id: "admin-1", username: "salom9202", password: "salom9202", role: "owner" },
+    { id: "admin-1", username: "99178296", password: "99178296", role: "owner" },
   ],
   logs: [
     {
