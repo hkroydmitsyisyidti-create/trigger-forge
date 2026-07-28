@@ -6,23 +6,29 @@ function extractServerEvents(content: string): { name: string; line: number; raw
   const events: { name: string; line: number; raw: string }[] = [];
   const seen = new Set<string>();
   const lines = content.split("\n");
-  const patterns = [
-    /TriggerServerEvent\s*\(\s*["']([^"']+)["']/g,
-    /TriggerServerEvent\s*\(\s*["']([^"']+)["']\s*,/g,
-  ];
+  const re = /TriggerServerEvent\s*\(\s*['"]([^'"]+)['"]/g;
   lines.forEach((line, idx) => {
-    for (const re of patterns) {
-      re.lastIndex = 0;
-      let m;
-      while ((m = re.exec(line)) !== null) {
-        if (!seen.has(m[1])) {
-          seen.add(m[1]);
-          events.push({ name: m[1], line: idx + 1, raw: line.trim() });
-        }
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(line)) !== null) {
+      const name = m[1];
+      if (!seen.has(name) && isValidEventName(name)) {
+        seen.add(name);
+        events.push({ name, line: idx + 1, raw: line.trim() });
       }
     }
   });
   return events;
+}
+
+function isValidEventName(name: string): boolean {
+  if (name.length < 3 || name.length > 80) return false;
+  if (/^[\x00-\x1f]/.test(name)) return false;
+  if (/[\\{}[\]|><$%^#@!~`]/.test(name)) return false;
+  if (/\\u[0-9a-f]{4}/i.test(name)) return false;
+  if (/\\x[0-9a-f]{2}/i.test(name)) return false;
+  if (/^[a-zA-Z0-9_:.\-]+$/.test(name)) return true;
+  return false;
 }
 
 function isWeaponImage(name: string): boolean {
