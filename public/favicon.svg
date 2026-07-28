@@ -1,24 +1,52 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1a1a2e"/>
-      <stop offset="100%" stop-color="#0f0f1a"/>
+      <stop offset="0%" stop-color="#1a0a0a"/>
+      <stop offset="100%" stop-color="#0a0505"/>
     </linearGradient>
-    <linearGradient id="bolt" x1="64" y1="20" x2="64" y2="108" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#f59e0b"/>
-      <stop offset="50%" stop-color="#f97316"/>
-      <stop offset="100%" stop-color="#ef4444"/>
+    <linearGradient id="fire1" x1="64" y1="120" x2="64" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#dc2626"/>
+      <stop offset="40%" stop-color="#ef4444"/>
+      <stop offset="70%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
     </linearGradient>
-    <linearGradient id="glow" x1="64" y1="30" x2="64" y2="98" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.6"/>
-      <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
+    <linearGradient id="fire2" x1="64" y1="110" x2="64" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#991b1b"/>
+      <stop offset="50%" stop-color="#dc2626"/>
+      <stop offset="100%" stop-color="#f97316"/>
     </linearGradient>
-    <filter id="shadow">
-      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#f59e0b" flood-opacity="0.5"/>
+    <linearGradient id="ember" x1="30" y1="80" x2="98" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="fireglow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
     </filter>
   </defs>
   <rect width="128" height="128" rx="28" fill="url(#bg)"/>
-  <rect x="2" y="2" width="124" height="124" rx="26" fill="none" stroke="url(#bolt)" stroke-width="1.5" opacity="0.3"/>
-  <path d="M72 24L44 68h20l-8 36 32-48H68z" fill="url(#bolt)" filter="url(#shadow)"/>
-  <path d="M72 24L44 68h20l-8 36 32-48H68z" fill="url(#glow)" opacity="0.4"/>
+  <rect x="1" y="1" width="126" height="126" rx="27" fill="none" stroke="url(#fire1)" stroke-width="1" opacity="0.4"/>
+  <!-- Outer flame -->
+  <path d="M64 16C64 16 30 52 30 78C30 96 45 112 64 112C83 112 98 96 98 78C98 52 64 16 64 16Z" fill="url(#fire2)" filter="url(#fireglow)" opacity="0.3"/>
+  <!-- Main flame body -->
+  <path d="M64 24C64 24 36 56 36 76C36 92 48 106 64 106C80 106 92 92 92 76C92 56 64 24 64 24Z" fill="url(#fire1)" filter="url(#glow)"/>
+  <!-- Inner flame -->
+  <path d="M64 40C64 40 46 62 46 76C46 86 54 96 64 96C74 96 82 86 82 76C82 62 64 40 64 40Z" fill="url(#ember)" opacity="0.9"/>
+  <!-- Core -->
+  <path d="M64 56C64 56 54 68 54 76C54 82 58 88 64 88C70 88 74 82 74 76C74 68 64 56 64 56Z" fill="#fef3c7" opacity="0.8"/>
+  <!-- Sparks -->
+  <circle cx="48" cy="44" r="2" fill="#fbbf24" opacity="0.8"/>
+  <circle cx="80" cy="48" r="1.5" fill="#f97316" opacity="0.7"/>
+  <circle cx="56" cy="32" r="1" fill="#fef3c7" opacity="0.9"/>
+  <circle cx="72" cy="36" r="1.5" fill="#fbbf24" opacity="0.6"/>
 </svg>

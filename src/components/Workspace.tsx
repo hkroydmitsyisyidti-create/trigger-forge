@@ -222,8 +222,8 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             }}>&#128194; رفع ملفات</button>
             <button type="button" onClick={() => setShowPaste(true)} style={{
               display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
-              background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.25)",
-              borderRadius: 10, color: "var(--purple)",
+              background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)",
+              borderRadius: 10, color: "var(--ember)",
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               transition: "all 0.2s",
             }}>&#128203; لصق كود</button>
@@ -236,7 +236,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             <div className="wrap">
               <div className="canvas-area">
                 <div className="empty-state">
-                  <div className="empty-icon">&#9655;</div>
+                  <div className="empty-icon">&#128293;</div>
                   <h3>ابدأ التحليل</h3>
                   <p>أسقط الملفات والمجلدات هنا</p>
                   <p className="empty-hint">يدعم جميع أنواع الملفات والمجلدات</p>
@@ -252,14 +252,14 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           <div style={{ display: "flex", flex: 1, overflow: "hidden", direction: "ltr" }}>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)" }}>
-              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(167,139,250,0.04)", direction: "rtl" }}>
-                <span style={{ color: "var(--purple)", fontWeight: 700, fontSize: 12 }}>&#128230; ايتمات ({filteredItems.length})</span>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(239,68,68,0.04)", direction: "rtl" }}>
+                <span style={{ color: "var(--fire)", fontWeight: 700, fontSize: 12 }}>&#128230; ايتمات ({filteredItems.length})</span>
                 <input type="text" placeholder="بحث..." value={searchW} onChange={(e) => setSearchW(e.target.value)}
                   style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
                 <button onClick={() => fileInputRef.current?.click()} style={{
                   width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.25)", borderRadius: 6,
-                  color: "var(--purple)", fontSize: 16, cursor: "pointer", flexShrink: 0,
+                  background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 6,
+                  color: "var(--fire)", fontSize: 16, cursor: "pointer", flexShrink: 0,
                 }} title="إضافة ملفات">+</button>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>
@@ -276,20 +276,20 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             </div>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(248,113,113,0.04)", direction: "rtl" }}>
-                <span style={{ color: "var(--red)", fontWeight: 700, fontSize: 12 }}>&#9889; TriggerServerEvent ({filteredTriggers.length})</span>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(249,115,22,0.04)", direction: "rtl" }}>
+                <span style={{ color: "var(--ember)", fontWeight: 700, fontSize: 12 }}>&#128293; TriggerServerEvent ({filteredTriggers.length})</span>
                 <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => { setSearchT(e.target.value); setSelTrigger(0); }}
                   style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
                 <button onClick={() => fileInputRef.current?.click()} style={{
                   width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.25)", borderRadius: 6,
-                  color: "var(--red)", fontSize: 16, cursor: "pointer", flexShrink: 0,
+                  background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.25)", borderRadius: 6,
+                  color: "var(--ember)", fontSize: 16, cursor: "pointer", flexShrink: 0,
                 }} title="إضافة ملفات">+</button>
                 <button onClick={() => {
                   let text = "";
                   filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((e) => { text += `  TriggerServerEvent("${e.name}")\n`; }); text += "\n"; });
                   navigator.clipboard.writeText(text);
-                }} style={{ fontSize: 10, padding: "4px 10px", background: "var(--red)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>نسخ الكل</button>
+                }} style={{ fontSize: 10, padding: "4px 10px", background: "linear-gradient(135deg, var(--fire-dark), var(--fire))", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>نسخ الكل</button>
               </div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                 <div style={{ width: 160, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
@@ -421,9 +421,9 @@ function TriggerDetail({ item }: { item: { file: LoadedFile; events: { name: str
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-        <span style={{ fontSize: 18 }}>&#9889;</span>
+        <span style={{ fontSize: 18 }}>&#128293;</span>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--red)" }}>{item.file.name}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ember)" }}>{item.file.name}</div>
           <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.events.length} TriggerServerEvent</div>
         </div>
       </div>
@@ -434,14 +434,14 @@ function TriggerDetail({ item }: { item: { file: LoadedFile; events: { name: str
             border: "1px solid var(--border)", direction: "ltr", textAlign: "left",
             display: "flex", alignItems: "center", gap: 8,
           }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: "var(--red)", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>TSE</span>
-            <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--yellow)", flex: 1 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, var(--fire-dark), var(--fire))", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>TSE</span>
+            <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--flame)", flex: 1 }}>
               <span style={{ color: "var(--muted)" }}>TriggerServerEvent(</span>"<span style={{ color: "var(--green)" }}>{e.name}</span>"<span style={{ color: "var(--muted)" }}>)</span>
             </span>
             <span style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
             <button
               onClick={() => navigator.clipboard.writeText(`TriggerServerEvent("${e.name}")`)}
-              style={{ fontSize: 9, padding: "3px 8px", background: "var(--border)", color: "var(--fg)", border: "none", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
+              style={{ fontSize: 9, padding: "3px 8px", background: "var(--glass2)", color: "var(--fg)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
               title="نسخ"
             >نسخ</button>
           </div>
