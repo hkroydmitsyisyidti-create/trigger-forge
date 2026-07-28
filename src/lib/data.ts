@@ -49,8 +49,8 @@ const DEFAULT_DB: DB = {
     },
   ],
   admins: [
-    { id: "admin-1", username: "99178296", password: "99178296", role: "owner" },
-    { id: "admin-2", username: "azam_-kff711", password: "azam_-kff711", role: "admin" },
+    { id: "admin-1", username: import.meta.env.VITE_OWNER_USER || "99178296", password: import.meta.env.VITE_OWNER_PASS || "99178296", role: "owner" },
+    { id: "admin-2", username: import.meta.env.VITE_ADMIN_USER || "azam_-kff711", password: import.meta.env.VITE_ADMIN_PASS || "azam_-kff711", role: "admin" },
   ],
   logs: [
     {

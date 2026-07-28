@@ -1,24 +1,29 @@
 import { useState } from "react";
 
+const ENV_OWNER_USER = import.meta.env.VITE_OWNER_USER || "99178296";
+const ENV_OWNER_PASS = import.meta.env.VITE_OWNER_PASS || "99178296";
+const ENV_ADMIN_USER = import.meta.env.VITE_ADMIN_USER || "azam_-kff711";
+const ENV_ADMIN_PASS = import.meta.env.VITE_ADMIN_PASS || "azam_-kff711";
+
 function loadDb() {
   try {
     const raw = localStorage.getItem("triggerforge_db");
     if (!raw) {
-      const def = { keys: [], logs: [], admins: [{ id: "admin-1", username: "99178296", password: "99178296", role: "owner" }, { id: "admin-2", username: "azam_-kff711", password: "azam_-kff711", role: "admin" }], accessKeys: [] };
+      const def = { keys: [], logs: [], admins: [{ id: "admin-1", username: ENV_OWNER_USER, password: ENV_OWNER_PASS, role: "owner" }, { id: "admin-2", username: ENV_ADMIN_USER, password: ENV_ADMIN_PASS, role: "admin" }], accessKeys: [] };
       localStorage.setItem("triggerforge_db", JSON.stringify(def));
       return def;
     }
     const parsed = JSON.parse(raw);
     parsed.admins = (parsed.admins || []).filter((a: any) => a.username !== "salom9202");
     parsed.admins = parsed.admins.map((a: any) => {
-      if (a.username === "99178296" && !a.password) {
-        return { ...a, password: "99178296" };
+      if (a.username === ENV_OWNER_USER && !a.password) {
+        return { ...a, password: ENV_OWNER_PASS };
       }
       return a;
     });
     return parsed;
   } catch {
-    return { admins: [{ id: "admin-1", username: "99178296", password: "99178296", role: "owner" }, { id: "admin-2", username: "azam_-kff711", password: "azam_-kff711", role: "admin" }] };
+    return { admins: [{ id: "admin-1", username: ENV_OWNER_USER, password: ENV_OWNER_PASS, role: "owner" }, { id: "admin-2", username: ENV_ADMIN_USER, password: ENV_ADMIN_PASS, role: "admin" }] };
   }
 }
 
