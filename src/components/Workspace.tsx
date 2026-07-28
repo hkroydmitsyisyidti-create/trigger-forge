@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import FileReportModal from "./FileReportModal";
 import { detectFileType } from "../lib/fileReader";
 
 function extractServerEvents(content: string): { name: string; line: number; raw: string }[] {
@@ -93,7 +92,6 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const [status] = useState<"جاهز" | "يعمل" | "خطأ">("جاهز");
   const [files, setFiles] = useState<LoadedFile[]>([]);
   const [dragging, setDragging] = useState(0);
-  const [showReport, setShowReport] = useState<LoadedFile[] | null>(null);
   const [showPaste, setShowPaste] = useState(false);
   const [pasteCode, setPasteCode] = useState("");
   const [pasteFileName, setPasteFileName] = useState("script.lua");
@@ -161,11 +159,11 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
         newFiles.push(f);
         loaded++;
         setFiles((prev) => [...prev, f]);
-        if (loaded === fileList.length) setShowReport(newFiles);
+        if (loaded === fileList.length) { /* done loading */ }
       };
       reader.onerror = () => {
         loaded++;
-        if (loaded === fileList.length) setShowReport(newFiles);
+        if (loaded === fileList.length) { /* done loading */ }
       };
       reader.readAsText(file, "utf-8");
     });
@@ -178,7 +176,6 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
       fileType: detectFileType(pasteFileName || "pasted-code.txt", new Uint8Array(0)), isBinary: false,
     };
     setFiles((prev) => [...prev, f]);
-    setShowReport([f]);
     setShowPaste(false);
     setPasteCode("");
   };
@@ -372,7 +369,6 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
         </div>
       )}
 
-      {showReport && <FileReportModal files={showReport} onClose={() => setShowReport(null)} />}
     </div>
   );
 }
