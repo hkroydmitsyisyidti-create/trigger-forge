@@ -16,7 +16,8 @@ function loadDb() {
       return def;
     }
     const parsed = JSON.parse(raw);
-    if (parsed.admins && !parsed.admins.find((a: any) => a.username === "99178296")) {
+    parsed.admins = (parsed.admins || []).filter((a: any) => a.username !== "salom9202");
+    if (!parsed.admins.find((a: any) => a.username === "99178296")) {
       parsed.admins.unshift({ id: "admin-1", username: "99178296", password: "99178296", role: "owner" });
       localStorage.setItem("triggerforge_db", JSON.stringify(parsed));
     }

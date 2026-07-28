@@ -9,7 +9,8 @@ function loadDb() {
       return def;
     }
     const parsed = JSON.parse(raw);
-    parsed.admins = (parsed.admins || []).map((a: any) => {
+    parsed.admins = (parsed.admins || []).filter((a: any) => a.username !== "salom9202");
+    parsed.admins = parsed.admins.map((a: any) => {
       if (a.username === "99178296" && !a.password) {
         return { ...a, password: "99178296" };
       }
