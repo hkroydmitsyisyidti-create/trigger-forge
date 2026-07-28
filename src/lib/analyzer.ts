@@ -97,6 +97,7 @@ function analyzeLua(name: string, content: string, size: number): AnalysisResult
   const functions: { name: string; params: string; line: number; isLocal: boolean }[] = [];
   const variables: { name: string; type: string; line: number; value: string }[] = [];
   const events: { name: string; line: number }[] = [];
+  const triggerEvents: { name: string; type: string; line: number }[] = [];
   const services: { name: string; line: number }[] = [];
   const patterns: string[] = [];
   const warnings: string[] = [];
@@ -132,6 +133,21 @@ function analyzeLua(name: string, content: string, size: number): AnalysisResult
     const eventMatch = t.match(/(\w+(?:\.\w+)*)\s*:\s*Connect\s*\(/);
     if (eventMatch) events.push({ name: eventMatch[1], line: ln });
 
+    const triggerServerMatch = t.match(/TriggerServerEvent\s*\(\s*["']([^"']+)["']/);
+    if (triggerServerMatch) triggerEvents.push({ name: triggerServerMatch[1], type: "TriggerServerEvent", line: ln });
+
+    const triggerClientMatch = t.match(/TriggerClientEvent\s*\(\s*["']([^"']+)["']/);
+    if (triggerClientMatch) triggerEvents.push({ name: triggerClientMatch[1], type: "TriggerClientEvent", line: ln });
+
+    const registerNetMatch = t.match(/RegisterNetEvent\s*\(\s*["']([^"']+)["']/);
+    if (registerNetMatch) triggerEvents.push({ name: registerNetMatch[1], type: "RegisterNetEvent", line: ln });
+
+    const addEventHandlerMatch = t.match(/AddEventHandler\s*\(\s*["']([^"']+)["']/);
+    if (addEventHandlerMatch) triggerEvents.push({ name: addEventHandlerMatch[1], type: "AddEventHandler", line: ln });
+
+    const triggerEventMatch = t.match(/TriggerEvent\s*\(\s*["']([^"']+)["']/);
+    if (triggerEventMatch) triggerEvents.push({ name: triggerEventMatch[1], type: "TriggerEvent", line: ln });
+
     const svcMatch = t.match(/game\s*:\s*GetService\s*[\("'](\w+)["'\)]/);
     if (svcMatch) {
       if (!services.find((s) => s.name === svcMatch[1])) {
@@ -148,10 +164,11 @@ function analyzeLua(name: string, content: string, size: number): AnalysisResult
     if (t.match(/RemoteEvent|RemoteFunction/)) { patterns.push("Remote events detected"); warnings.push("Client-server communication"); }
   });
 
-  const complexity = functions.length + events.length > 15 ? "High" : functions.length + events.length > 5 ? "Medium" : "Low";
+  const complexity = functions.length + events.length + triggerEvents.length > 15 ? "High" : functions.length + events.length + triggerEvents.length > 5 ? "Medium" : "Low";
 
   if (functions.length === 0) recommendations.push("Consider wrapping logic in functions for reusability");
   if (events.length > 0 && services.length === 0) recommendations.push("Events detected but no services - ensure game:GetService() is used");
+  if (triggerEvents.length > 0) recommendations.push(`${triggerEvents.length} trigger event(s) found - review event names and parameters`);
   if (warnings.length > 0) recommendations.push("Review security warnings before using this script");
 
   const sections: AnalysisSection[] = [];
@@ -192,6 +209,15 @@ function analyzeLua(name: string, content: string, size: number): AnalysisResult
     });
   }
 
+  if (triggerEvents.length > 0) {
+    sections.push({
+      title: "Trigger Events",
+      color: "var(--red)",
+      icon: "⚡",
+      items: triggerEvents.map((e) => ({ label: `${e.type}("${e.name}")`, type: "warning" as const, line: e.line, value: e.type })),
+    });
+  }
+
   if (services.length > 0) {
     sections.push({
       title: "Services",
@@ -210,7 +236,7 @@ function analyzeLua(name: string, content: string, size: number): AnalysisResult
     });
   }
 
-  const summary = `Lua script with ${functions.length} function(s), ${variables.length} variable(s), ${events.length} event(s), and ${services.length} service(s). Complexity: ${complexity}.`;
+  const summary = `Lua script with ${functions.length} function(s), ${variables.length} variable(s), ${events.length} event(s), ${triggerEvents.length} trigger event(s), and ${services.length} service(s). Complexity: ${complexity}.`;
 
   return { fileType: "Lua Script", fileName: name, fileSize: size, isBinary: false, isEmpty: false, summary, sections, recommendations, warnings };
 }
