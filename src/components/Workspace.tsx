@@ -179,10 +179,9 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const [showPaste, setShowPaste] = useState(false);
   const [pasteCode, setPasteCode] = useState("");
   const [pasteFileName, setPasteFileName] = useState("script.lua");
-  const [selTrigger, setSelTrigger] = useState(0);
+  const [itemCategory, setItemCategory] = useState("all");
   const [searchW, setSearchW] = useState("");
   const [searchT, setSearchT] = useState("");
-  const [itemCategory, setItemCategory] = useState("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
@@ -316,8 +315,6 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
     return triggerData.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.name.toLowerCase().includes(q)));
   }, [triggerData, searchT]);
 
-  useEffect(() => { if (selTrigger >= filteredTriggers.length) setSelTrigger(0); }, [filteredTriggers.length, selTrigger]);
-
   const hasFiles = files.length > 0;
   const statusDot = status === "جاهز" ? "dot-green" : status === "يعمل" ? "dot-yellow" : "dot-red";
 
@@ -423,7 +420,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(249,115,22,0.04)", direction: "rtl" }}>
                 <span style={{ color: "var(--ember)", fontWeight: 700, fontSize: 12 }}>Events ({filteredTriggers.length})</span>
-                <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => { setSearchT(e.target.value); setSelTrigger(0); }}
+                <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => setSearchT(e.target.value)}
                   style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
                 <button onClick={() => fileInputRef.current?.click()} style={{
                   width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
@@ -436,42 +433,66 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                   navigator.clipboard.writeText(text);
                 }} style={{ fontSize: 10, padding: "4px 10px", background: "linear-gradient(135deg, var(--fire-dark), var(--fire))", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>نسخ الكل</button>
               </div>
-              <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-                <div style={{ width: 160, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
+              <div style={{ display: "flex", flex: 1, overflow: "hidden", direction: "rtl" }}>
+                <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
                   {filteredTriggers.length === 0 ? (
-                    <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 11 }}>لا توجد أحداث</div>
-                  ) : filteredTriggers.map((item, i) => {
-                    const dominantFw = item.events.reduce((acc, e) => {
-                      acc[e.framework] = (acc[e.framework] || 0) + 1;
-                      return acc;
-                    }, {} as Record<string, number>);
-                    const topFw = Object.entries(dominantFw).sort((a, b) => b[1] - a[1])[0]?.[0] as Framework || "other";
-                    return (
-                      <div key={item.file.name + i} onClick={() => setSelTrigger(i)} style={{
-                        padding: "7px 10px", cursor: "pointer", fontSize: 11, borderBottom: "1px solid var(--border)",
-                        background: selTrigger === i ? "rgba(248,113,113,0.08)" : "transparent",
-                        borderLeft: selTrigger === i ? "2px solid var(--red)" : "2px solid transparent",
-                        transition: "all 0.15s",
-                      }}>
-                        <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.file.name}</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3 }}>
-                          <span style={{
-                            width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
-                            background: FRAMEWORK_COLORS[topFw],
-                            border: topFw === "1b-core" ? "1px solid rgba(255,255,255,0.4)" : "none",
-                          }} />
-                          <span style={{ fontSize: 9, color: FRAMEWORK_COLORS[topFw] }}>{FRAMEWORK_LABELS[topFw]}</span>
-                          <span style={{ fontSize: 9, color: "var(--muted)" }}>{item.events.length}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{ flex: 1, overflowY: "auto", padding: 20, direction: "rtl" }}>
-                  {filteredTriggers[selTrigger] ? (
-                    <TriggerDetail item={filteredTriggers[selTrigger]} />
+                    <div style={{ padding: 40, textAlign: "center", color: "var(--muted)", fontSize: 12 }}>لا توجد أحداث</div>
                   ) : (
-                    <div style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", paddingTop: 50 }}>اختر ملف</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {filteredTriggers.map((item) => {
+                        const dominantFw = item.events.reduce((acc, e) => {
+                          acc[e.framework] = (acc[e.framework] || 0) + 1;
+                          return acc;
+                        }, {} as Record<string, number>);
+                        const topFw = Object.entries(dominantFw).sort((a, b) => b[1] - a[1])[0]?.[0] as Framework || "other";
+                        return (
+                          <div key={item.file.name} style={{
+                            background: "var(--glass)", border: "1px solid var(--border)",
+                            borderRadius: 10, overflow: "hidden",
+                          }}>
+                            <div style={{
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              padding: "8px 12px", borderBottom: "1px solid var(--border)",
+                              background: "rgba(249,115,22,0.03)",
+                            }}>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ember)" }}>{item.file.name}</div>
+                                <div style={{ fontSize: 10, color: "var(--muted)" }}>Event {item.events.length}</div>
+                              </div>
+                              <div style={{
+                                display: "inline-flex", alignItems: "center", gap: 5,
+                                padding: "3px 10px", borderRadius: 8,
+                                background: "var(--glass2)", border: "1px solid var(--border)",
+                                fontSize: 10, fontWeight: 600, color: FRAMEWORK_COLORS[topFw],
+                              }}>
+                                <span style={{ width: 5, height: 5, borderRadius: "50%", background: FRAMEWORK_COLORS[topFw] }} />
+                                {FRAMEWORK_LABELS[topFw]}
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: 6 }}>
+                              {item.events.map((e, i) => (
+                                <div key={i} className="trigger-event-row">
+                                  <span style={{
+                                    fontSize: 9, fontWeight: 700, color: "#fff",
+                                    background: typeColor(e.type),
+                                    padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap",
+                                  }}>{typeLabel(e.type)}</span>
+                                  <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--flame)", flex: 1 }}>
+                                    <span style={{ color: "var(--muted)" }}>{e.type}(</span>"<span style={{ color: "var(--green)" }}>{e.name}</span>"<span style={{ color: "var(--muted)" }}>)</span>
+                                  </span>
+                                  <span style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
+                                  <button
+                                    onClick={() => navigator.clipboard.writeText(`${e.type}("${e.name}")`)}
+                                    className="trigger-copy"
+                                    title="نسخ"
+                                  >نسخ</button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </div>
@@ -577,94 +598,27 @@ function ItemGridItem({ file }: { file: LoadedFile }) {
   );
 }
 
-function TriggerDetail({ item }: { item: { file: LoadedFile; events: TriggerEvent[] } }) {
-  const dominantFw = item.events.reduce((acc, e) => {
-    acc[e.framework] = (acc[e.framework] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  const topFw = Object.entries(dominantFw).sort((a, b) => b[1] - a[1])[0]?.[0] as Framework || "other";
-
-  const typeBadge: Record<string, string> = {
-    "TriggerServerEvent": "TSE",
-    "TriggerClientEvent": "TCE",
-    "RegisterNetEvent": "RNE",
-    "AddEventHandler": "AHE",
-    "TriggerEvent": "TE",
-    "Export": "EXP",
-    "ESX Callback": "ESX",
-    "ESX Config": "CFG",
-    "vRP Call": "VRP",
-    "vRPC Call": "RPC",
-    "MySQL Fetch": "SQL",
-    "MySQL Execute": "SQL",
-    "MySQL Update": "SQL",
-    "MySQL Insert": "SQL",
-    "MySQL Query": "SQL",
-    "oxMySQL": "SQL",
-    "Callback": "CB",
+function typeLabel(type: string): string {
+  const m: Record<string, string> = {
+    "TriggerServerEvent": "TSE", "TriggerClientEvent": "TCE", "RegisterNetEvent": "RNE",
+    "AddEventHandler": "AHE", "TriggerEvent": "TE", "Export": "EXP",
+    "ESX Callback": "ESX", "ESX Config": "CFG", "vRP Call": "VRP", "vRPC Call": "RPC",
+    "MySQL Fetch": "SQL", "MySQL Execute": "SQL", "MySQL Update": "SQL",
+    "MySQL Insert": "SQL", "MySQL Query": "SQL", "oxMySQL": "SQL", "Callback": "CB",
   };
+  return m[type] || type.slice(0, 3).toUpperCase();
+}
 
-  const typeColors: Record<string, string> = {
-    "TriggerServerEvent": "var(--fire-dark)",
-    "TriggerClientEvent": "var(--blue)",
-    "RegisterNetEvent": "var(--green)",
-    "AddEventHandler": "var(--yellow)",
-    "TriggerEvent": "var(--purple)",
-    "Export": "var(--cyan)",
-    "ESX Callback": "#22c55e",
-    "ESX Config": "#22c55e",
-    "vRP Call": "#3b82f6",
-    "vRPC Call": "#3b82f6",
-    "MySQL Fetch": "var(--flame)",
-    "MySQL Execute": "var(--flame)",
-    "MySQL Update": "var(--flame)",
-    "MySQL Insert": "var(--flame)",
-    "MySQL Query": "var(--flame)",
-    "oxMySQL": "var(--flame)",
-    "Callback": "var(--purple)",
+function typeColor(type: string): string {
+  const m: Record<string, string> = {
+    "TriggerServerEvent": "var(--fire-dark)", "TriggerClientEvent": "var(--blue)",
+    "RegisterNetEvent": "var(--green)", "AddEventHandler": "var(--yellow)",
+    "TriggerEvent": "var(--purple)", "Export": "var(--cyan)",
+    "ESX Callback": "#22c55e", "ESX Config": "#22c55e",
+    "vRP Call": "#3b82f6", "vRPC Call": "#3b82f6",
+    "MySQL Fetch": "var(--flame)", "MySQL Execute": "var(--flame)",
+    "MySQL Update": "var(--flame)", "MySQL Insert": "var(--flame)",
+    "MySQL Query": "var(--flame)", "oxMySQL": "var(--flame)", "Callback": "var(--purple)",
   };
-
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ember)" }}>{item.file.name}</div>
-          <div style={{ fontSize: 11, color: "var(--muted)" }}>Event {item.events.length}</div>
-        </div>
-        <div style={{
-          display: "inline-flex", alignItems: "center", gap: 5,
-          padding: "4px 10px", borderRadius: 8,
-          background: "var(--glass)", border: "1px solid var(--border)",
-          fontSize: 10, fontWeight: 600, color: FRAMEWORK_COLORS[topFw],
-        }}>
-          <span style={{ width: 5, height: 5, borderRadius: "50%", background: FRAMEWORK_COLORS[topFw] }} />
-          {FRAMEWORK_LABELS[topFw]}
-        </div>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {item.events.map((e, i) => (
-          <div key={i} style={{
-            padding: "8px 12px", background: "var(--glass)", borderRadius: 8,
-            border: "1px solid var(--border)", direction: "ltr", textAlign: "left",
-            display: "flex", alignItems: "center", gap: 8,
-          }}>
-            <span style={{
-              fontSize: 9, fontWeight: 700, color: "#fff",
-              background: typeColors[e.type] || "var(--fire-dark)",
-              padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap",
-            }}>{typeBadge[e.type] || e.type.slice(0, 3).toUpperCase()}</span>
-            <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--flame)", flex: 1 }}>
-              <span style={{ color: "var(--muted)" }}>{e.type}(</span>"<span style={{ color: "var(--green)" }}>{e.name}</span>"<span style={{ color: "var(--muted)" }}>)</span>
-            </span>
-            <span style={{ fontSize: 9, color: "var(--muted)", whiteSpace: "nowrap" }}>سطر {e.line}</span>
-            <button
-              onClick={() => navigator.clipboard.writeText(`${e.type}("${e.name}")`)}
-              style={{ fontSize: 9, padding: "3px 8px", background: "var(--glass2)", color: "var(--fg)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", whiteSpace: "nowrap" }}
-              title="نسخ"
-            >نسخ</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return m[type] || "var(--fire-dark)";
 }
