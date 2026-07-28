@@ -1,42 +1,37 @@
 import { useState, useEffect } from "react";
+import { generateServerKey, getDurationLabel } from "../lib/keygen";
 
 type Tab = "keys" | "logs" | "admins" | "bans";
 
-interface Key { id: string; key: string; duration: string; bound: string; createdAt: string; expiresAt: string; }
-interface LogEntry { id: string; date: string; ip: string; action: string; }
-interface Admin { id: string; username: string; password: string; role: string; }
-interface Ban { id: string; kind: string; value: string; reason: string; until: string; }
+interface KeyEntry { id: string; key: string; duration: string; createdAt: string; }
+interface LogEntry { id: string; date: string; action: string; }
+interface AdminEntry { id: string; username: string; role: string; }
 
-function getDurationLabel(d: string) {
-  const m: Record<string, string> = { "1h": "ساعة", "1d": "يوم", "30d": "30 يوم", "60d": "60 يوم", lifetime: "دائم" };
-  return m[d] || d;
+function loadDb() {
+  try {
+    const raw = localStorage.getItem("triggerforge_db");
+    if (!raw) {
+      const def = { keys: [], logs: [], admins: [{ id: "admin-1", username: "salom9202", role: "owner" }], accessKeys: [] };
+      localStorage.setItem("triggerforge_db", JSON.stringify(def));
+      return def;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return { keys: [], logs: [], admins: [], accessKeys: [] };
+  }
 }
 
-async function api(action: string, data: Record<string, unknown> = {}) {
-  const res = await fetch("/api/index", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, ...data }),
-  });
-  return res.json();
+function saveDb(db: any) {
+  localStorage.setItem("triggerforge_db", JSON.stringify(db));
 }
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
 export default function AdminDashboard({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>("keys");
-  const [keys, setKeys] = useState<Key[]>([]);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [admins, setAdmins] = useState<Admin[]>([]);
-  const [bans, setBans] = useState<Ban[]>([]);
+  const [db, setDb] = useState(loadDb());
+  const refresh = () => setDb(loadDb());
 
-  const loadAll = async () => {
-    const [k, l, a, b] = await Promise.all([api("getKeys"), api("getLogs"), api("getAdmins"), api("getBans")]);
-    if (k.keys) setKeys(k.keys);
-    if (l.logs) setLogs(l.logs);
-    if (a.admins) setAdmins(a.admins);
-    if (b.bans) setBans(b.bans);
-  };
-
-  useEffect(() => { loadAll(); }, []);
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "F2") { e.preventDefault(); onClose(); } };
     window.addEventListener("keydown", h);
@@ -66,13 +61,11 @@ export default function AdminDashboard({ onClose, onLogout }: { onClose: () => v
             <button className={`sb ${tab === "keys" ? "active" : ""}`} onClick={() => setTab("keys")}><span className="dot-blue" />الكيات</button>
             <button className={`sb ${tab === "logs" ? "active" : ""}`} onClick={() => setTab("logs")}><span className="dot-yellow" />السجلات</button>
             <button className={`sb ${tab === "admins" ? "active" : ""}`} onClick={() => setTab("admins")}><span className="dot-green" />المديرين</button>
-            <button className={`sb ${tab === "bans" ? "active" : ""}`} onClick={() => setTab("bans")}><span className="dot-pink" />الحظر</button>
           </div>
           <div className="admin-p">
-            {tab === "keys" && <KeysPanel keys={keys} refresh={loadAll} />}
-            {tab === "logs" && <LogsPanel logs={logs} />}
-            {tab === "admins" && <AdminsPanel admins={admins} refresh={loadAll} />}
-            {tab === "bans" && <BansPanel bans={bans} refresh={loadAll} />}
+            {tab === "keys" && <KeysPanel db={db} refresh={refresh} />}
+            {tab === "logs" && <LogsPanel db={db} />}
+            {tab === "admins" && <AdminsPanel db={db} refresh={refresh} />}
           </div>
         </div>
       </div>
@@ -80,20 +73,26 @@ export default function AdminDashboard({ onClose, onLogout }: { onClose: () => v
   );
 }
 
-function KeysPanel({ keys, refresh }: { keys: Key[]; refresh: () => void }) {
+function KeysPanel({ db, refresh }: { db: any; refresh: () => void }) {
   const [duration, setDuration] = useState("30d");
-  const [generating, setGenerating] = useState(false);
 
-  const handleGenerate = async () => {
-    setGenerating(true);
-    await api("generateKey", { keyData: { duration } });
-    await refresh();
-    setGenerating(false);
+  const handleGenerate = () => {
+    const keyStr = generateServerKey();
+    const k: KeyEntry = { id: uid(), key: keyStr, duration, createdAt: new Date().toISOString() };
+    db.keys.push(k);
+    db.accessKeys.push(keyStr);
+    db.logs.unshift({ id: uid(), date: new Date().toISOString(), action: `إنشاء مفتاح: ${keyStr} (${getDurationLabel(duration)})` });
+    saveDb(db);
+    refresh();
   };
 
-  const handleDelete = async (id: string) => {
-    await api("deleteKey", { keyId: id });
-    await refresh();
+  const handleDelete = (id: string) => {
+    const k = db.keys.find((x: KeyEntry) => x.id === id);
+    db.keys = db.keys.filter((x: KeyEntry) => x.id !== id);
+    db.accessKeys = db.accessKeys.filter((a: string) => a !== k?.key);
+    db.logs.unshift({ id: uid(), date: new Date().toISOString(), action: `حذف مفتاح: ${k?.key || id}` });
+    saveDb(db);
+    refresh();
   };
 
   return (
@@ -106,24 +105,25 @@ function KeysPanel({ keys, refresh }: { keys: Key[]; refresh: () => void }) {
           <option value="60d">60 يوم</option>
           <option value="lifetime">دائم</option>
         </select>
-        <button className="admin-abtn gr" onClick={handleGenerate} disabled={generating}>+ إنشاء</button>
+        <button className="admin-abtn gr" onClick={handleGenerate}>+ إنشاء مفتاح</button>
       </div>
+      <p style={{ fontSize: "12px", color: "#888", margin: "8px 0" }}>المفاتيح تعمل على جميع الأجهزة والمتصفحات</p>
       <div className="admin-table-wrap">
         <table className="admin-tbl">
-          <thead><tr><th>المفتاح</th><th>المدة</th><th>الجهاز</th><th className="text-right">الإجراءات</th></tr></thead>
+          <thead><tr><th>المفتاح</th><th>المدة</th><th>التاريخ</th><th className="text-right">الإجراءات</th></tr></thead>
           <tbody>
-            {keys.map((k) => (
+            {db.keys.map((k: KeyEntry) => (
               <tr key={k.id}>
                 <td className="mono">{k.key}</td>
                 <td>{getDurationLabel(k.duration)}</td>
-                <td>{k.bound ? "مربوط" : "—"}</td>
+                <td>{new Date(k.createdAt).toLocaleDateString("ar-SA")}</td>
                 <td className="text-right">
                   <button className="admin-abtn sm" onClick={() => navigator.clipboard.writeText(k.key)}>نسخ</button>
                   <button className="admin-abtn sm pk" onClick={() => handleDelete(k.id)}>حذف</button>
                 </td>
               </tr>
             ))}
-            {keys.length === 0 && <tr><td colSpan={4} className="text-center text-zinc-500">لا توجد كيات</td></tr>}
+            {db.keys.length === 0 && <tr><td colSpan={4} className="text-center text-zinc-500">لا توجد كيات</td></tr>}
           </tbody>
         </table>
       </div>
@@ -131,120 +131,66 @@ function KeysPanel({ keys, refresh }: { keys: Key[]; refresh: () => void }) {
   );
 }
 
-function LogsPanel({ logs }: { logs: LogEntry[] }) {
+function LogsPanel({ db }: { db: any }) {
   return (
     <div className="admin-table-wrap">
       <table className="admin-tbl">
-        <thead><tr><th>التاريخ</th><th>IP</th><th>الإجراء</th></tr></thead>
+        <thead><tr><th>التاريخ</th><th>الإجراء</th></tr></thead>
         <tbody>
-          {logs.map((l) => (
+          {(db.logs || []).slice(0, 50).map((l: LogEntry) => (
             <tr key={l.id}>
               <td>{new Date(l.date).toLocaleString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
-              <td className="mono">{l.ip}</td>
               <td>{l.action}</td>
             </tr>
           ))}
-          {logs.length === 0 && <tr><td colSpan={3} className="text-center text-zinc-500">لا توجد سجلات</td></tr>}
+          {(!db.logs || db.logs.length === 0) && <tr><td colSpan={2} className="text-center text-zinc-500">لا توجد سجلات</td></tr>}
         </tbody>
       </table>
     </div>
   );
 }
 
-function AdminsPanel({ admins, refresh }: { admins: Admin[]; refresh: () => void }) {
+function AdminsPanel({ db, refresh }: { db: any; refresh: () => void }) {
   const [newUser, setNewUser] = useState("");
   const [newPass, setNewPass] = useState("");
 
-  const handleAdd = async () => {
+  const handleAdd = () => {
     if (!newUser.trim() || !newPass.trim()) return;
-    await api("addAdmin", { username: newUser.trim(), password: newPass.trim() });
+    if (db.admins.find((a: AdminEntry) => a.username === newUser.trim())) return;
+    db.admins.push({ id: uid(), username: newUser.trim(), role: "admin" });
+    db.logs.unshift({ id: uid(), date: new Date().toISOString(), action: `إضافة مدير: ${newUser.trim()}` });
+    saveDb(db);
     setNewUser("");
     setNewPass("");
-    await refresh();
+    refresh();
   };
 
-  const handleDelete = async (id: string) => {
-    await api("deleteAdmin", { keyId: id });
-    await refresh();
+  const handleDelete = (id: string) => {
+    const a = db.admins.find((x: AdminEntry) => x.id === id);
+    db.admins = db.admins.filter((x: AdminEntry) => x.id !== id);
+    db.logs.unshift({ id: uid(), date: new Date().toISOString(), action: `حذف مدير: ${a?.username || id}` });
+    saveDb(db);
+    refresh();
   };
 
   return (
     <>
       <div className="admin-form-row">
         <input type="text" className="admin-inp flex-1" placeholder="اسم المستخدم" value={newUser} onChange={(e) => setNewUser(e.target.value)} />
-        <input type="text" className="admin-inp flex-1" placeholder="كلمة المرور" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
+        <input type="password" className="admin-inp flex-1" placeholder="كلمة المرور" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
         <button className="admin-abtn gr" onClick={handleAdd}>+ إضافة</button>
       </div>
       <div className="admin-table-wrap">
         <table className="admin-tbl">
           <thead><tr><th>المستخدم</th><th>الدور</th><th className="text-right">الإجراءات</th></tr></thead>
           <tbody>
-            {admins.map((a) => (
+            {db.admins.map((a: AdminEntry) => (
               <tr key={a.id}>
                 <td>{a.username}</td>
                 <td><span className={`role-badge role-${a.role}`}>{a.role}</span></td>
                 <td className="text-right">{a.role !== "owner" && <button className="admin-abtn sm pk" onClick={() => handleDelete(a.id)}>حذف</button>}</td>
               </tr>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
-function BansPanel({ bans, refresh }: { bans: Ban[]; refresh: () => void }) {
-  const [kind, setKind] = useState("ip");
-  const [value, setValue] = useState("");
-  const [reason, setReason] = useState("");
-  const [duration, setDuration] = useState("30d");
-
-  const handleAdd = async () => {
-    if (!value.trim() || !reason.trim()) return;
-    await api("addBan", { banKind: kind, banValue: value.trim(), banReason: reason.trim(), banDuration: duration });
-    setValue("");
-    setReason("");
-    await refresh();
-  };
-
-  const handleDelete = async (id: string) => {
-    await api("deleteBan", { keyId: id });
-    await refresh();
-  };
-
-  return (
-    <>
-      <div className="admin-form-row ban-form">
-        <select className="admin-sel" value={kind} onChange={(e) => setKind(e.target.value)}>
-          <option value="ip">IP</option>
-          <option value="hwid">HWID</option>
-          <option value="key">Key</option>
-        </select>
-        <input type="text" className="admin-inp flex-1" placeholder="القيمة" value={value} onChange={(e) => setValue(e.target.value)} />
-        <input type="text" className="admin-inp flex-1" placeholder="السبب" value={reason} onChange={(e) => setReason(e.target.value)} />
-        <select className="admin-sel" value={duration} onChange={(e) => setDuration(e.target.value)}>
-          <option value="1h">ساعة</option>
-          <option value="1d">يوم</option>
-          <option value="30d">30 يوم</option>
-          <option value="60d">60 يوم</option>
-          <option value="lifetime">دائم</option>
-        </select>
-        <button className="admin-abtn gr" onClick={handleAdd}>+ إضافة</button>
-      </div>
-      <div className="admin-table-wrap">
-        <table className="admin-tbl">
-          <thead><tr><th>النوع</th><th>القيمة</th><th>السبب</th><th>حتى</th><th className="text-right">الإجراءات</th></tr></thead>
-          <tbody>
-            {bans.map((b) => (
-              <tr key={b.id}>
-                <td><span className={`ban-kind kind-${b.kind}`}>{b.kind}</span></td>
-                <td className="mono">{b.value}</td>
-                <td>{b.reason}</td>
-                <td>{new Date(b.until).toLocaleDateString("ar-SA")}</td>
-                <td className="text-right"><button className="admin-abtn sm pk" onClick={() => handleDelete(b.id)}>إزالة</button></td>
-              </tr>
-            ))}
-            {bans.length === 0 && <tr><td colSpan={5} className="text-center text-zinc-500">لا يوجد حظر</td></tr>}
           </tbody>
         </table>
       </div>

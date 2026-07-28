@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { generateFingerprint } from "../lib/fingerprint";
+import { validateKey } from "../lib/keygen";
 
 export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
   const [key, setKey] = useState("");
@@ -9,7 +9,7 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
 
   useEffect(() => { setLoaded(true); }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!key.trim()) return;
     setLoading(true);
@@ -17,51 +17,16 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
 
     const trimmed = key.trim();
 
-    const localDb = JSON.parse(localStorage.getItem("triggerforge_db") || "{}");
-    const validKeys: string[] = localDb.accessKeys || ["TF-XXXX-YYYY-ZZZZ"];
-
-    if (validKeys.includes(trimmed)) {
-      try {
-        const fp = await generateFingerprint();
-        localStorage.setItem("triggerforge_unlocked", "true");
-        localStorage.setItem("triggerforge_key", trimmed);
-        localStorage.setItem("triggerforge_fp", fp);
-        onUnlock();
-        setLoading(false);
-        return;
-      } catch {
-        localStorage.setItem("triggerforge_unlocked", "true");
-        localStorage.setItem("triggerforge_key", trimmed);
-        onUnlock();
-        setLoading(false);
-        return;
-      }
-    }
-
-    try {
-      const fingerprint = await generateFingerprint();
-      const res = await fetch("/api/index", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "verify", key: trimmed, fingerprint }),
-      });
-      const data = await res.json();
-      if (data.valid) {
-        localStorage.setItem("triggerforge_unlocked", "true");
-        localStorage.setItem("triggerforge_key", trimmed);
-        onUnlock();
-      } else {
-        setError(data.error === "Invalid key" ? "كي غير صحيح" :
-                 data.error === "Key expired" ? "انتهت صلاحية الكي" :
-                 data.error === "Key bound to another device" ? "الكي مربوط بجهاز آخر" :
-                 data.error === "Key banned" ? "تم حظر هذا الكي" :
-                 "خطأ في التحقق");
-      }
-    } catch {
-      setError("خطأ في الاتصال بالخادم");
-    } finally {
+    if (validateKey(trimmed)) {
+      localStorage.setItem("triggerforge_unlocked", "true");
+      localStorage.setItem("triggerforge_key", trimmed);
       setLoading(false);
+      onUnlock();
+      return;
     }
+
+    setLoading(false);
+    setError("كي غير صحيح أو منتهي الصلاحية");
   };
 
   return (
