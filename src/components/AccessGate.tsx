@@ -34,17 +34,56 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
       <div className="gate-card">
         <div className="gate-mark">
           <svg className="mark" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2.6 19.4 6.85 V15.15 L12 19.4 4.6 15.15 V6.85 Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-            <path d="M12.7 7.3 8.9 12.4 H11.2 L10.6 16.1 14.7 10.8 H12.1 Z" fill="var(--blue)" />
+            <path d="M13.5 2L3 14h9l-1.5 8L21 10h-9l1.5-8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="rgba(239,68,68,0.15)" />
           </svg>
         </div>
         <h2>Trigger Forge</h2>
-        <p>أدخل مفتاح الوصول لفتح مساحة العمل</p>
+        <p className="subtitle">أداة تحليل سكربتات FiveM الاحترافية</p>
+
+        <div className="features">
+          <div className="feature-tag"><span>&#9889;</span> كشف TriggerServerEvent</div>
+          <div className="feature-tag"><span>&#128299;</span> تحليل الأسلحة</div>
+          <div className="feature-tag"><span>&#128269;</span> فحص شامل</div>
+        </div>
+
         <form onSubmit={handleSubmit} autoComplete="off">
-          <input type="password" className="field mono" placeholder="الصق المفتاح هنا" value={key} onChange={(e) => { setKey(e.target.value); setError(""); }} autoComplete="current-password" />
-          <button className="cta" type="submit" disabled={loading}>{loading ? "جاري التحقق..." : "فتح"}</button>
+          <input
+            type="text"
+            className="field mono"
+            placeholder="أدخل مفتاح الوصول"
+            value={key}
+            onChange={(e) => { setKey(e.target.value); setError(""); }}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button className="cta" type="submit" disabled={loading}>
+            {loading ? "جاري التحقق..." : "فتح مساحة العمل"}
+          </button>
           {error && <p className="form-error">{error}</p>}
         </form>
+
+        <button className="admin-close-link" onClick={onUnlock}>
+          تخطي للتجربة
+        </button>
+      </div>
+
+      <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", maxWidth: 380, lineHeight: 1.6 }}>
+        <div style={{ marginBottom: 8, fontWeight: 600, color: "var(--fg)", fontSize: 13 }}>كيف يعمل؟</div>
+        <div style={{ display: "flex", gap: 16, justifyContent: "center", marginBottom: 12 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 20, marginBottom: 4 }}>&#128194;</div>
+            <div>1. ارفع ملفات السيرفر</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 20, marginBottom: 4 }}>&#128269;</div>
+            <div>2. يُحلل تلقائياً</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 20, marginBottom: 4 }}>&#9889;</div>
+            <div>3. احصل على النتائج</div>
+          </div>
+        </div>
+        <div>تدعم جميع أنواع الملفات: <span style={{ color: "var(--fg)" }}>.lua .cfg .js .txt</span> والمجلدات الكاملة</div>
       </div>
     </div>
   );
