@@ -98,11 +98,11 @@ const FRAMEWORK_LABELS: Record<Framework, string> = {
 const FRAMEWORK_COLORS: Record<Framework, string> = {
   "esx": "#22c55e",
   "vrp": "#3b82f6",
-  "respect": "#f97316",
-  "mt": "#8b5cf6",
-  "1b-core": "#ec4899",
+  "respect": "#8b5cf6",
+  "mt": "#f97316",
+  "1b-core": "#ffffff",
   "m3": "#06b6d4",
-  "rt": "#eab308",
+  "rt": "#8b5cf6",
   "other": "#8a7070",
 };
 
@@ -452,15 +452,27 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                     border: `1px solid ${fwFilter === "all" ? "rgba(249,115,22,0.4)" : "var(--border)"}`,
                     color: fwFilter === "all" ? "var(--ember)" : "var(--muted)",
                   }}>الكل</button>
-                  {(["esx", "vrp", "respect", "mt", "1b-core", "m3", "rt"] as Framework[]).map((fw) => (
-                    <button key={fw} onClick={() => setFwFilter(fw)} style={{
-                      padding: "3px 10px", borderRadius: 12, fontSize: 10, fontWeight: 600,
-                      cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
-                      background: fwFilter === fw ? `${FRAMEWORK_COLORS[fw]}20` : "var(--glass)",
-                      border: `1px solid ${fwFilter === fw ? `${FRAMEWORK_COLORS[fw]}50` : "var(--border)"}`,
-                      color: fwFilter === fw ? FRAMEWORK_COLORS[fw] : "var(--muted)",
-                    }}>{FRAMEWORK_LABELS[fw]}</button>
-                  ))}
+                  {(["esx", "vrp", "respect", "mt", "1b-core", "m3", "rt"] as Framework[]).map((fw) => {
+                    const isActive = fwFilter === fw;
+                    const isWhite = fw === "1b-core";
+                    const isRtPurple = fw === "rt";
+                    const bg = isActive
+                      ? (isWhite ? "rgba(255,255,255,0.15)" : isRtPurple ? "rgba(139,92,246,0.2)" : `${FRAMEWORK_COLORS[fw]}20`)
+                      : "var(--glass)";
+                    const borderC = isActive
+                      ? (isWhite ? "rgba(255,255,255,0.4)" : isRtPurple ? "rgba(139,92,246,0.5)" : `${FRAMEWORK_COLORS[fw]}50`)
+                      : "var(--border)";
+                    const textColor = isActive
+                      ? (isWhite ? "#ffffff" : isRtPurple ? "#8b5cf6" : FRAMEWORK_COLORS[fw])
+                      : "var(--muted)";
+                    return (
+                      <button key={fw} onClick={() => setFwFilter(fw)} style={{
+                        padding: "3px 10px", borderRadius: 12, fontSize: 10, fontWeight: 600,
+                        cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
+                        background: bg, border: `1px solid ${borderC}`, color: textColor,
+                      }}>{FRAMEWORK_LABELS[fw]}</button>
+                    );
+                  })}
                 </div>
               </div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -482,7 +494,11 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                       }}>
                         <div style={{ fontWeight: 500, color: "var(--fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.file.name}</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3 }}>
-                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: FRAMEWORK_COLORS[topFw], flexShrink: 0 }} />
+                          <span style={{
+                            width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
+                            background: FRAMEWORK_COLORS[topFw],
+                            border: topFw === "1b-core" ? "1px solid rgba(255,255,255,0.4)" : "none",
+                          }} />
                           <span style={{ fontSize: 9, color: FRAMEWORK_COLORS[topFw] }}>{FRAMEWORK_LABELS[topFw]}</span>
                           <span style={{ fontSize: 9, color: "var(--muted)" }}>{item.events.length}</span>
                         </div>
