@@ -37,8 +37,7 @@ function isWeaponImage(name: string): boolean {
 
 function extractWeaponName(filename: string): string {
   let name = filename.replace(/\.(png|jpg|jpeg|webp)$/i, "");
-  name = name.replace(/^weapon[_\-]/i, "").replace(/WEAPON[_\-]/i, "").replace(/[_\-]/g, " ");
-  return name.replace(/\b\w/g, (c) => c.toUpperCase());
+  return name;
 }
 
 function formatSize(bytes: number): string {
