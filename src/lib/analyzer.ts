@@ -52,9 +52,20 @@ export function analyzeFile(name: string, content: string, size: number, isBinar
   const ext = "." + name.split(".").pop()?.toLowerCase();
   const isEmpty = size === 0 || content.trim().length === 0;
 
-  const analyzeContent = isBinary ? (strings || []).join("\n") : content;
-  const lines = analyzeContent.split("\n");
-  const { triggerEvents, fivemFound } = scanFiveMEvents(analyzeContent, lines);
+  const codeExts = [".lua", ".luau", ".js", ".ts", ".jsx", ".tsx", ".py", ".java", ".php", ".rb", ".cs", ".go", ".rs", ".c", ".cpp", ".h", ".sh", ".bat", ".ps1", ".sql", ".json", ".yaml", ".yml", ".xml", ".html", ".cfg", ".ini", ".conf"];
+  const isCodeFile = codeExts.includes(ext);
+
+  let analyzeContent = content;
+  let triggerEvents: { name: string; type: string; line: number }[] = [];
+  let fivemFound = false;
+
+  if (isCodeFile || (!isBinary && content.length > 0)) {
+    analyzeContent = content;
+    const lines = analyzeContent.split("\n");
+    const scan = scanFiveMEvents(analyzeContent, lines);
+    triggerEvents = scan.triggerEvents;
+    fivemFound = scan.fivemFound;
+  }
 
   if (isEmpty) {
     return {

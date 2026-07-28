@@ -24,6 +24,13 @@ interface Props {
 
 export default function FileReportModal({ files, onClose }: Props) {
   const [activeTab, setActiveTab] = useState(0);
+  const [searchName, setSearchName] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!searchName.trim()) return files;
+    const q = searchName.toLowerCase();
+    return files.filter((f) => f.name.toLowerCase().includes(q));
+  }, [files, searchName]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -31,9 +38,13 @@ export default function FileReportModal({ files, onClose }: Props) {
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
+  useEffect(() => {
+    if (activeTab >= filtered.length) setActiveTab(0);
+  }, [filtered.length, activeTab]);
+
   const results: AnalysisResult[] = useMemo(
-    () => files.map((f) => analyzeFile(f.name, f.content, f.size, f.isBinary)),
-    [files]
+    () => filtered.map((f) => analyzeFile(f.name, f.content, f.size, f.isBinary)),
+    [filtered]
   );
 
   const copyAll = () => {
@@ -53,20 +64,49 @@ export default function FileReportModal({ files, onClose }: Props) {
     navigator.clipboard.writeText(text);
   };
 
+  const triggerFiles = useMemo(() => {
+    return results.filter((r) => r.sections.some((s) => s.title.includes("Trigger") || s.title.includes("FiveM")));
+  }, [results]);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h3>تقرير تحليل الملف</h3>
           <div className="modal-head-actions">
-            {files.length > 1 && (
-              <div className="tab-switch">
-                {files.map((f, i) => (
+            <div className="mh-search" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" width={16} height={16}><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+              <input
+                type="text"
+                placeholder="بحث بالاسم..."
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                style={{
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  padding: "4px 8px",
+                  color: "var(--fg)",
+                  fontSize: 12,
+                  width: 140,
+                  outline: "none",
+                }}
+              />
+            </div>
+            {triggerFiles.length > 0 && (
+              <span style={{ fontSize: 11, color: "var(--red)", padding: "2px 8px", background: "rgba(239,68,68,0.15)", borderRadius: 6 }}>
+                {triggerFiles.length} ملف فيها Trigger
+              </span>
+            )}
+            {filtered.length > 1 && (
+              <div className="tab-switch" style={{ display: "flex", gap: 2, flexWrap: "wrap", maxWidth: 300 }}>
+                {filtered.map((f, i) => (
                   <button
                     key={f.name}
                     type="button"
                     className={`tab-btn ${activeTab === i ? "active" : ""}`}
                     onClick={() => setActiveTab(i)}
+                    style={{ fontSize: 10, padding: "2px 6px" }}
                   >
                     {f.name}
                   </button>
@@ -78,7 +118,13 @@ export default function FileReportModal({ files, onClose }: Props) {
           </div>
         </div>
         <div className="modal-body">
-          <ReportCard result={results[activeTab]} />
+          {filtered.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
+              لا توجد ملفات تطابق "{searchName}"
+            </div>
+          ) : (
+            <ReportCard result={results[activeTab] || results[0]} />
+          )}
         </div>
       </div>
     </div>
