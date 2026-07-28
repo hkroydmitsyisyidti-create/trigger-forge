@@ -15,7 +15,6 @@ interface LoadedFile {
   size: number;
   fileType: string;
   isBinary: boolean;
-  strings?: string[];
 }
 
 interface Props {
@@ -33,7 +32,7 @@ export default function FileReportModal({ files, onClose }: Props) {
   }, [onClose]);
 
   const results: AnalysisResult[] = useMemo(
-    () => files.map((f) => analyzeFile(f.name, f.content, f.size, f.isBinary, f.strings)),
+    () => files.map((f) => analyzeFile(f.name, f.content, f.size, f.isBinary)),
     [files]
   );
 

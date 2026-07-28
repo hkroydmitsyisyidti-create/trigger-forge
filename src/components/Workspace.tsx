@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import FileReportModal from "./FileReportModal";
-import { detectFileType, extractStrings } from "../lib/fileReader";
+import { detectFileType } from "../lib/fileReader";
 
 interface ConsoleEntry {
   id: string;
@@ -15,7 +15,38 @@ interface LoadedFile {
   size: number;
   fileType: string;
   isBinary: boolean;
-  strings?: string[];
+}
+
+function readEntryRecursive(entry: FileSystemEntry): Promise<File[]> {
+  if (entry.isFile) {
+    return new Promise((resolve) => {
+      (entry as FileSystemFileEntry).file(
+        (file) => resolve([file]),
+        () => resolve([])
+      );
+    });
+  }
+  if (entry.isDirectory) {
+    const dirReader = (entry as FileSystemDirectoryEntry).createReader();
+    return new Promise((resolve) => {
+      const all: File[] = [];
+      const readBatch = () => {
+        dirReader.readEntries(async (entries) => {
+          if (entries.length === 0) {
+            resolve(all);
+          } else {
+            for (const e of entries) {
+              const files = await readEntryRecursive(e);
+              all.push(...files);
+            }
+            readBatch();
+          }
+        }, () => resolve(all));
+      };
+      readBatch();
+    });
+  }
+  return Promise.resolve([]);
 }
 
 type SideTab = "results" | "console" | "files";
@@ -68,10 +99,36 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
     e.stopPropagation();
     dragCounter.current = 0;
     setDragging(0);
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length > 0) {
-      processFiles(droppedFiles);
+
+    const allFiles: File[] = [];
+    const items = e.dataTransfer.items;
+
+    if (items) {
+      const entries: Promise<File[]>[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry?.();
+        if (entry) {
+          entries.push(readEntryRecursive(entry));
+        } else {
+          const f = items[i].getAsFile();
+          if (f) allFiles.push(f);
+        }
+      }
+      if (entries.length > 0) {
+        Promise.all(entries).then((results) => {
+          const flat = results.flat().filter(Boolean);
+          if (flat.length > 0) processFiles(flat);
+          else if (allFiles.length > 0) processFiles(allFiles);
+        });
+        return;
+      }
     }
+
+    if (allFiles.length === 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      if (droppedFiles.length > 0) allFiles.push(...droppedFiles);
+    }
+    if (allFiles.length > 0) processFiles(allFiles);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -113,38 +170,10 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
     fileList.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        let content: string;
+        let content = (ev.target?.result as string) || "";
         let isBinary = false;
 
-        try {
-          const result = ev.target?.result;
-          if (typeof result === "string") {
-            content = result;
-          } else if (result instanceof ArrayBuffer) {
-            const uint8 = new Uint8Array(result);
-            const strings = extractStrings(uint8);
-
-            if (uint8.length === 0) {
-              content = "[Empty file]";
-              isBinary = true;
-            } else {
-              try {
-                content = new TextDecoder("utf-8").decode(uint8);
-              } catch {
-                content = strings.join("\n") || "[Cannot decode file]";
-                isBinary = true;
-              }
-              if (!isBinary && content.includes("\0")) {
-                isBinary = true;
-                content = strings.join("\n") || content;
-              }
-            }
-          } else {
-            content = "[无法读取文件]";
-            isBinary = true;
-          }
-        } catch {
-          content = "[فشل في قراءة الملف]";
+        if (content.includes("\0")) {
           isBinary = true;
         }
 
@@ -158,7 +187,8 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
         newFiles.push(f);
         loaded++;
         setFiles((prev) => [...prev, f]);
-        addEntry("success", `تم التحميل: ${file.name} (${((file.size || content.length) / 1024).toFixed(1)}KB)`);
+        const sizeKB = ((file.size || content.length) / 1024).toFixed(1);
+        addEntry("success", `تم التحميل: ${file.name} (${sizeKB}KB)${isBinary ? " [ثنائي]" : ""}`);
         if (loaded === fileList.length) {
           setShowReport(newFiles);
         }
@@ -170,7 +200,6 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           size: 0,
           fileType: "Unknown",
           isBinary: true,
-          strings: [],
         };
         newFiles.push(f);
         loaded++;
@@ -180,12 +209,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           setShowReport(newFiles);
         }
       };
-
-      if (file.size > 0) {
-        reader.readAsText(file, "utf-8");
-      } else {
-        reader.readAsArrayBuffer(file);
-      }
+      reader.readAsText(file, "utf-8");
     });
   };
 
@@ -272,8 +296,12 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
               {files.length === 0 && entries.length === 0 && (
                 <div className="empty-state">
                   <div className="empty-icon">&#9655;</div>
-                  <p>أسقط الملفات أو اضغط &#128194; للرفع</p>
-                  <p className="empty-hint">يدعم جميع أنواع الملفات</p>
+                  <p>أسقط الملفات والمجلدات هنا أو اضغط &#128194; للرفع</p>
+                  <p className="empty-hint">يدعم جميع أنواع الملفات والمجلدات</p>
+                  <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "center" }}>
+                    <button className="admin-abtn" onClick={() => setShowPaste(true)}>&#128203; لصق كود</button>
+                    <button className="admin-abtn" onClick={() => fileInputRef.current?.click()}>&#128194; رفع ملف</button>
+                  </div>
                 </div>
               )}
               {files.length > 0 && (
