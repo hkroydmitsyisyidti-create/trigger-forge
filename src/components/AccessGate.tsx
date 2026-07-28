@@ -46,7 +46,7 @@ export default function AccessGate({ onUnlock }: { onUnlock: () => void }) {
 
         <form onSubmit={handleSubmit} autoComplete="off">
           <input
-            type="text"
+            type="password"
             className="field mono"
             placeholder="أدخل مفتاح الوصول"
             value={key}
