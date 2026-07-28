@@ -17,6 +17,7 @@ interface ThreadInfo {
   line: number;
   raw: string;
   framework: Framework;
+  vulns: string[];
 }
 
 function detectFramework(name: string, content: string): Framework {
@@ -53,9 +54,6 @@ function extractTriggers(content: string, fileName: string): TriggerEvent[] {
     { re: /TriggerServerEvent\s*\(\s*['"]([^'"]+)['"]/g, type: "TriggerServerEvent" },
     { re: /TriggerClientEvent\s*\(\s*['"]([^'"]+)['"]/g, type: "TriggerClientEvent" },
     { re: /TriggerEvent\s*\(\s*['"]([^'"]+)['"]/g, type: "TriggerEvent" },
-    { re: /TriggerServerCallback\s*\(\s*['"]([^'"]+)['"]/g, type: "Callback" },
-    { re: /ESX\.TriggerServerCallback\s*\(\s*['"]([^'"]+)['"]/g, type: "ESX Callback" },
-    { re: /vRP\s*\.\s*server\s*\.\s*["']([^'"]+)["']/g, type: "vRP Call" },
     { re: /exports\s*\[\s*['"]([^'"]+)['"]\s*\]\s*\.\s*(\w+)/g, type: "Export" },
   ];
 
@@ -126,31 +124,68 @@ function extractThreads(content: string, fileName: string): ThreadInfo[] {
   const seen = new Set<string>();
   const lines = content.split("\n");
 
-  const threadPatterns: { re: RegExp; name: string }[] = [
-    { re: /Citizen\.CreateThread\s*\(\s*(?:function\s*\(\s*\)|\(\s*function\s*\(\s*\))/g, name: "Citizen.CreateThread" },
-    { re: /CreateThread\s*\(\s*(?:function\s*\(\s*\)|\(\s*function\s*\(\s*\))/g, name: "CreateThread" },
-    { re: /Citizen\.CreateThreadNow\s*\(/g, name: "Citizen.CreateThreadNow" },
-    { re: /CreateThreadNow\s*\(/g, name: "CreateThreadNow" },
-    { re: /AddEventHandler\s*\(\s*['"]([^'"]+)['"]/g, name: "" },
-    { re: /RegisterNetEvent\s*\(\s*['"]([^'"]+)['"]/g, name: "" },
-  ];
+  let inThread = false;
+  let threadStart = -1;
+  let depth = 0;
 
   lines.forEach((line, idx) => {
-    for (const p of threadPatterns) {
-      p.re.lastIndex = 0;
-      let m;
-      while ((m = p.re.exec(line)) !== null) {
-        const eventName = m[1] || p.name || "thread";
-        if (!seen.has(`${eventName}:${idx}`)) {
-          seen.add(`${eventName}:${idx}`);
+    const t = line.trim();
+
+    if (/(Citizen\.CreateThread|CreateThread)\s*\(\s*(?:function\s*\(|function\s*\(\s*\))/.test(t)) {
+      inThread = true;
+      threadStart = idx;
+      depth = 0;
+    }
+
+    if (inThread) {
+      depth += (t.match(/\(/g) || []).length - (t.match(/\)/g) || []).length;
+
+      const serverCall = t.match(/TriggerServerEvent\s*\(\s*['"]([^'"]+)['"]/);
+      const clientCall = t.match(/TriggerClientEvent\s*\(\s*['"]([^'"]+)['"]/);
+      const localCall = t.match(/TriggerEvent\s*\(\s*['"]([^'"]+)['"]/);
+
+      if (serverCall || clientCall || localCall) {
+        const name = serverCall?.[1] || clientCall?.[1] || localCall?.[1] || "";
+        const type = serverCall ? "TriggerServerEvent" : clientCall ? "TriggerClientEvent" : "TriggerEvent";
+        if (name && name.length >= 3 && !seen.has(`${type}:${name}:${idx}`)) {
+          seen.add(`${type}:${name}:${idx}`);
           const framework = detectFramework(fileName, line);
-          threads.push({ name: eventName, line: idx + 1, raw: line.trim(), framework });
+          const vulns = analyzeThreadVulns([{ name, line: idx + 1, raw: t, framework, vulns: [] }]);
+          threads.push({ name: `${type}("${name}")`, line: idx + 1, raw: t, framework, vulns });
         }
+      }
+
+      if (depth <= 0 && idx > threadStart) {
+        inThread = false;
       }
     }
   });
 
   return threads;
+}
+
+function analyzeThreadVulns(threads: ThreadInfo[]): string[] {
+  const vulns: string[] = [];
+  const raws = threads.map((th) => th.raw.toLowerCase());
+
+  if (raws.some((r) => /setOnFire|troll|kill|death|wasted/.test(r)))
+    vulns.push("ثغرة ت角色 — يمكن استخدامها للقتل أو الإيذاء عن بعد");
+  if (raws.some((r) => /teleport|tp|warp|goto/.test(r)))
+    vulns.push("ثغرة انتقال — يمكن استخدامها للتنقل لأي مكان");
+  if (raws.some((r) => /vehicle|car|spawn/.test(r)))
+    vulns.push("ثغرة توليد — يمكن استخدامها لتوليد سيارات عن بعد");
+  if (raws.some((r) => /money|cash|bank|pay/.test(r)))
+    vulns.push("ثغرة مالية — يمكن استخدامها لإضافة أموال");
+  if (raws.some((r) => /weapon|gun|loadout/.test(r)))
+    vulns.push("ثغرة أسلحة — يمكن استخدامها للحصول على أسلحة");
+  if (raws.some((r) => /inventory|item|drop/.test(r)))
+    vulns.push("ثغرة مخزون — يمكن استخدامها لتعديل المخزون");
+  if (raws.some((r) => /admin|ban|kick|permission/.test(r)))
+    vulns.push("ثغرة صلاحيات — يمكن استخدامها للحصول على صلاحيات أدمن");
+  if (raws.some((r) => /hack|exploit|cheat/.test(r)))
+    vulns.push("ثغرة اختراق — كود اختراق مباشر");
+
+  return vulns;
 }
 
 function isValidEventName(name: string): boolean {
@@ -261,7 +296,6 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const [itemCategory, setItemCategory] = useState("all");
   const [searchW, setSearchW] = useState("");
   const [searchT, setSearchT] = useState("");
-  const [triggerCategory, setTriggerCategory] = useState("all");
   const [triggerTab, setTriggerTab] = useState<"triggers" | "threads">("triggers");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
@@ -400,19 +434,10 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   }, [allItemFiles, searchW, itemCategory]);
 
   const filteredTriggers = useMemo(() => {
-    let items = triggerData;
-    if (searchT.trim()) {
-      const q = searchT.toLowerCase();
-      items = items.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.name.toLowerCase().includes(q)));
-    }
-    if (triggerCategory !== "all") {
-      items = items.map((t) => ({
-        ...t,
-        events: t.events.filter((e) => e.category === triggerCategory),
-      })).filter((t) => t.events.length > 0);
-    }
-    return items;
-  }, [triggerData, searchT, triggerCategory]);
+    if (!searchT.trim()) return triggerData;
+    const q = searchT.toLowerCase();
+    return triggerData.filter((t) => t.file.name.toLowerCase().includes(q) || t.events.some((e) => e.name.toLowerCase().includes(q)));
+  }, [triggerData, searchT]);
 
   const filteredThreads = useMemo(() => {
     if (!searchT.trim()) return threadData;
@@ -558,19 +583,6 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                     navigator.clipboard.writeText(text);
                   }} style={{ fontSize: 10, padding: "4px 10px", background: "linear-gradient(135deg, var(--fire-dark), var(--fire))", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>نسخ الكل</button>
                 </div>
-                {triggerTab === "triggers" && (
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {ITEM_CATEGORIES.map((cat) => (
-                      <button key={cat.id} onClick={() => setTriggerCategory(cat.id)} style={{
-                        padding: "3px 10px", borderRadius: 12, fontSize: 10, fontWeight: 600,
-                        cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
-                        background: triggerCategory === cat.id ? `${cat.color}20` : "var(--glass)",
-                        border: `1px solid ${triggerCategory === cat.id ? `${cat.color}50` : "var(--border)"}`,
-                        color: triggerCategory === cat.id ? cat.color : "var(--muted)",
-                      }}>{cat.label}</button>
-                    ))}
-                  </div>
-                )}
               </div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden", direction: "rtl" }}>
                 <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
@@ -680,6 +692,24 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                                   {FRAMEWORK_LABELS[topFw]}
                                 </div>
                               </div>
+                              {(() => {
+                                const allVulns = item.threads.flatMap((th) => th.vulns);
+                                const uniqueVulns = [...new Set(allVulns)];
+                                if (uniqueVulns.length === 0) return null;
+                                return (
+                                  <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", background: "rgba(239,68,68,0.02)" }}>
+                                    {uniqueVulns.map((v, vi) => (
+                                      <div key={vi} style={{
+                                        fontSize: 10, color: "var(--fire)", lineHeight: 1.6,
+                                        display: "flex", alignItems: "flex-start", gap: 6,
+                                      }}>
+                                        <span style={{ color: "var(--fire)", flexShrink: 0, marginTop: 1 }}>&#9679;</span>
+                                        {v}
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
                               <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: 6 }}>
                                 {item.threads.map((th, i) => (
                                   <div key={i} className="trigger-event-row">
