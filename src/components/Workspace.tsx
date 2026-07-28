@@ -39,6 +39,15 @@ function extractWeaponName(filename: string): string {
   return name;
 }
 
+function isVehicleImage(name: string): boolean {
+  return /^(vehicle|car)[_\-]/i.test(name) && /\.(png|jpg|jpeg|webp)$/i.test(name);
+}
+
+function extractVehicleName(filename: string): string {
+  let name = filename.replace(/\.(png|jpg|jpeg|webp)$/i, "");
+  return name;
+}
+
 interface LoadedFile {
   name: string;
   content: string;
@@ -88,8 +97,10 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   const [pasteCode, setPasteCode] = useState("");
   const [pasteFileName, setPasteFileName] = useState("script.lua");
   const [selWeapon, setSelWeapon] = useState(0);
+  const [selVehicle, setSelVehicle] = useState(0);
   const [selTrigger, setSelTrigger] = useState(0);
   const [searchW, setSearchW] = useState("");
+  const [searchV, setSearchV] = useState("");
   const [searchT, setSearchT] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
@@ -173,6 +184,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   };
 
   const weaponFiles = useMemo(() => files.filter((f) => isWeaponImage(f.name)), [files]);
+  const vehicleFiles = useMemo(() => files.filter((f) => isVehicleImage(f.name)), [files]);
   const triggerData = useMemo(() => {
     const items: { file: LoadedFile; events: { name: string; line: number; raw: string }[] }[] = [];
     for (const f of files) {
@@ -188,6 +200,12 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
     return weaponFiles.filter((f) => f.name.toLowerCase().includes(q) || extractWeaponName(f.name).toLowerCase().includes(q));
   }, [weaponFiles, searchW]);
 
+  const filteredVehicles = useMemo(() => {
+    if (!searchV.trim()) return vehicleFiles;
+    const q = searchV.toLowerCase();
+    return vehicleFiles.filter((f) => f.name.toLowerCase().includes(q) || extractVehicleName(f.name).toLowerCase().includes(q));
+  }, [vehicleFiles, searchV]);
+
   const filteredTriggers = useMemo(() => {
     if (!searchT.trim()) return triggerData;
     const q = searchT.toLowerCase();
@@ -195,6 +213,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
   }, [triggerData, searchT]);
 
   useEffect(() => { if (selWeapon >= filteredWeapons.length) setSelWeapon(0); }, [filteredWeapons.length, selWeapon]);
+  useEffect(() => { if (selVehicle >= filteredVehicles.length) setSelVehicle(0); }, [filteredVehicles.length, selVehicle]);
   useEffect(() => { if (selTrigger >= filteredTriggers.length) setSelTrigger(0); }, [filteredTriggers.length, selTrigger]);
 
   const hasFiles = files.length > 0;
@@ -220,7 +239,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           </div>
           <div className="tc">
             <span className="status-pill"><span className={`dot ${statusDot}`} /><span>{status}</span></span>
-            {hasFiles && <span style={{ fontSize: 11, color: "var(--muted)", marginRight: 8 }}>{files.length} ملف | {triggerData.length} ترigger | {weaponFiles.length} سلاح</span>}
+            {hasFiles && <span style={{ fontSize: 11, color: "var(--muted)", marginRight: 8 }}>{files.length} ملف | {vehicleFiles.length} سيارة | {weaponFiles.length} سلاح | {triggerData.length} ترigger</span>}
           </div>
           <div className="tr" style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={() => fileInputRef.current?.click()} style={{
@@ -280,6 +299,30 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
                     {filteredWeapons.map((f, i) => (
                       <WeaponGridItem key={f.name + i} file={f} isSelected={selWeapon === i} onClick={() => setSelWeapon(i)} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)" }}>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8, background: "rgba(34,211,238,0.04)", direction: "rtl" }}>
+                <span style={{ color: "var(--cyan)", fontWeight: 700, fontSize: 12 }}>&#128663; سيارات ({filteredVehicles.length})</span>
+                <input type="text" placeholder="بحث..." value={searchV} onChange={(e) => { setSearchV(e.target.value); setSelVehicle(0); }}
+                  style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 8px", color: "var(--fg)", fontSize: 11, outline: "none" }} />
+                <button onClick={() => fileInputRef.current?.click()} style={{
+                  width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(34,211,238,0.12)", border: "1px solid rgba(34,211,238,0.25)", borderRadius: 6,
+                  color: "var(--cyan)", fontSize: 16, cursor: "pointer", flexShrink: 0,
+                }} title="إضافة ملفات">+</button>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>
+                {filteredVehicles.length === 0 ? (
+                  <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 11 }}>لا توجد سيارات</div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
+                    {filteredVehicles.map((f, i) => (
+                      <VehicleGridItem key={f.name + i} file={f} isSelected={selVehicle === i} onClick={() => setSelVehicle(i)} />
                     ))}
                   </div>
                 )}
@@ -422,6 +465,72 @@ function WeaponGridItem({ file, isSelected, onClick }: { file: LoadedFile; isSel
           whiteSpace: "nowrap", width: "100%",
         }}>
           {weaponName}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VehicleGridItem({ file, isSelected, onClick }: { file: LoadedFile; isSelected: boolean; onClick: () => void }) {
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const vehicleName = extractVehicleName(file.name);
+
+  useEffect(() => {
+    if (file.rawFile) {
+      const url = URL.createObjectURL(file.rawFile);
+      setImgUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [file.rawFile]);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(vehicleName);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  };
+
+  return (
+    <div onClick={onClick} style={{
+      padding: 8, cursor: "pointer", position: "relative",
+      background: isSelected ? "rgba(34,211,238,0.1)" : "var(--glass)",
+      border: isSelected ? "1px solid rgba(34,211,238,0.35)" : "1px solid var(--border)",
+      borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+      transition: "all 0.2s",
+    }}>
+      <button onClick={handleCopy} title="نسخ اسم السيارة" style={{
+        position: "absolute", top: 4, right: 4, width: 20, height: 20,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: copied ? "rgba(34,197,94,0.85)" : "rgba(0,0,0,0.6)",
+        border: "none", borderRadius: 5, cursor: "pointer",
+        color: "#fff", fontSize: 9, opacity: 0, transition: "all 0.2s",
+        zIndex: 2,
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+      >{copied ? "✓" : "📋"}</button>
+      <div
+        onMouseEnter={(e) => {
+          const btn = e.currentTarget.parentElement?.querySelector("button") as HTMLButtonElement;
+          if (btn) btn.style.opacity = "1";
+        }}
+        onMouseLeave={(e) => {
+          const btn = e.currentTarget.parentElement?.querySelector("button") as HTMLButtonElement;
+          if (btn && !copied) btn.style.opacity = "0";
+        }}
+        style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}
+      >
+        {imgUrl ? (
+          <img src={imgUrl} alt="" style={{ width: 64, height: 64, objectFit: "contain", borderRadius: 6 }} />
+        ) : (
+          <div style={{ width: 64, height: 64, borderRadius: 6, background: "var(--bg3)" }} />
+        )}
+        <div style={{
+          fontSize: 10, fontWeight: 500, color: isSelected ? "var(--cyan)" : "var(--fg)",
+          textAlign: "center", overflow: "hidden", textOverflow: "ellipsis",
+          whiteSpace: "nowrap", width: "100%",
+        }}>
+          {vehicleName}
         </div>
       </div>
     </div>
