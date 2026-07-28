@@ -21,7 +21,7 @@ interface LoadedFile {
 type SideTab = "results" | "console" | "files";
 
 export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) {
-  const [status, setStatus] = useState<"Ready" | "Running" | "Error">("Ready");
+  const [status, setStatus] = useState<"جاهز" | "يعمل" | "خطأ">("جاهز");
   const [sideTab, setSideTab] = useState<SideTab>("results");
   const [entries, setEntries] = useState<ConsoleEntry[]>([]);
   const [filter, setFilter] = useState("");
@@ -47,11 +47,11 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
 
   const handleRun = () => {
     if (!customInput.trim()) return;
-    setStatus("Running");
+    setStatus("يعمل");
     addEntry("info", `> ${customInput}`);
     setTimeout(() => {
-      addEntry("output", `[Response] Executed: ${customInput}`);
-      setStatus("Ready");
+      addEntry("output", `[استجابة] تم التنفيذ: ${customInput}`);
+      setStatus("جاهز");
     }, 800);
     setCustomInput("");
   };
@@ -147,7 +147,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
         newFiles.push(f);
         loaded++;
         setFiles((prev) => [...prev, f]);
-        addEntry("success", `Loaded: ${file.name} (${(file.size / 1024).toFixed(1)}KB) [${fileType}]`);
+        addEntry("success", `تم التحميل: ${file.name} (${(file.size / 1024).toFixed(1)}KB) [${fileType}]`);
         if (loaded === fileList.length) {
           setShowReport(newFiles);
         }
@@ -155,7 +155,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
       reader.onerror = () => {
         const f: LoadedFile = {
           name: file.name,
-          content: "[Failed to read file]",
+          content: "[فشل في قراءة الملف]",
           size: file.size,
           fileType: "Unknown",
           isBinary: true,
@@ -164,7 +164,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
         newFiles.push(f);
         loaded++;
         setFiles((prev) => [...prev, f]);
-        addEntry("warn", `Failed to read: ${file.name}`);
+        addEntry("warn", `فشل في قراءة: ${file.name}`);
         if (loaded === fileList.length) {
           setShowReport(newFiles);
         }
@@ -175,7 +175,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
 
   const removeFile = (name: string) => {
     setFiles((prev) => prev.filter((f) => f.name !== name));
-    addEntry("info", `Removed: ${name}`);
+    addEntry("info", `تم الإزالة: ${name}`);
   };
 
   const filteredEntries = entries.filter((e) => filter ? e.text.toLowerCase().includes(filter.toLowerCase()) : true);
@@ -195,10 +195,10 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }, 100);
-    addEntry("success", "Results exported");
+    addEntry("success", "تم تصدير النتائج");
   };
 
-  const statusDot = status === "Ready" ? "dot-green" : status === "Running" ? "dot-yellow" : "dot-red";
+  const statusDot = status === "جاهز" ? "dot-green" : status === "يعمل" ? "dot-yellow" : "dot-red";
 
   return (
     <div
@@ -213,8 +213,8 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           <div className="drop-overlay-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
           </div>
-          <div className="drop-overlay-text">Drop <b>files</b> here</div>
-          <div className="drop-overlay-sub">release to load</div>
+          <div className="drop-overlay-text">أسقط <b>الملفات</b> هنا</div>
+          <div className="drop-overlay-sub">اتركه للتحميل</div>
         </div>
       )}
 
@@ -228,9 +228,9 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             <span className="status-pill"><span className={`dot ${statusDot}`} /><span>{status}</span></span>
           </div>
           <div className="tr">
-            <button type="button" className="ti" title="Upload" onClick={() => fileInputRef.current?.click()}>&#128194;</button>
-            <button type="button" className="ti" title="Admin (F2)" onClick={onOpenAdmin}>&#9881;&#65039;</button>
-            <button type="button" className="ti" title="Menu">&#8942;</button>
+              <button type="button" className="ti" title="رفع ملف" onClick={() => fileInputRef.current?.click()}>&#128194;</button>
+              <button type="button" className="ti" title="الإدارة (F2)" onClick={onOpenAdmin}>&#9881;&#65039;</button>
+              <button type="button" className="ti" title="القائمة">&#8942;</button>
           </div>
         </nav>
 
@@ -240,8 +240,8 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
               {files.length === 0 && entries.length === 0 && (
                 <div className="empty-state">
                   <div className="empty-icon">&#9655;</div>
-                  <p>Drop files or click &#128194; to upload</p>
-                  <p className="empty-hint">Supports all file types</p>
+                  <p>أسقط الملفات أو اضغط &#128194; للرفع</p>
+                  <p className="empty-hint">يدعم جميع أنواع الملفات</p>
                 </div>
               )}
               {files.length > 0 && (
@@ -253,7 +253,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                       </span>
                       <div className="file-card-info">
                         <div className="file-card-name">{f.name}</div>
-                        <div className="file-card-meta">{(f.size / 1024).toFixed(1)}KB &middot; {f.isBinary ? "Binary" : "Text"}</div>
+                        <div className="file-card-meta">{(f.size / 1024).toFixed(1)}KB &middot; {f.isBinary ? "ثنائي" : "نصي"}</div>
                       </div>
                       <button type="button" className="file-card-remove" onClick={() => removeFile(f.name)}>&times;</button>
                     </div>
@@ -266,21 +266,21 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
           <aside className="side-panel">
             <div className="side-head">
               <div className="seg">
-                <button type="button" className={`console-tab ${sideTab === "results" ? "active" : ""}`} onClick={() => setSideTab("results")}>Results</button>
-                <button type="button" className={`console-tab ${sideTab === "console" ? "active" : ""}`} onClick={() => setSideTab("console")}>Console</button>
-                <button type="button" className={`console-tab ${sideTab === "files" ? "active" : ""}`} onClick={() => setSideTab("files")}>Files</button>
+                <button type="button" className={`console-tab ${sideTab === "results" ? "active" : ""}`} onClick={() => setSideTab("results")}>النتائج</button>
+                <button type="button" className={`console-tab ${sideTab === "console" ? "active" : ""}`} onClick={() => setSideTab("console")}>الكونسول</button>
+                <button type="button" className={`console-tab ${sideTab === "files" ? "active" : ""}`} onClick={() => setSideTab("files")}>الملفات</button>
               </div>
               <div className="mh-spacer" />
               <div className="mh-search">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
-                <input type="text" placeholder="Filter..." value={filter} onChange={(e) => setFilter(e.target.value)} />
+                <input type="text" placeholder="تصفية..." value={filter} onChange={(e) => setFilter(e.target.value)} />
               </div>
             </div>
             <div className="panel-body">
               {sideTab === "files" ? (
                 <div className="files-panel">
                   {files.length === 0 ? (
-                    <div className="panel-empty">No files loaded</div>
+                    <div className="panel-empty">لا توجد ملفات محملة</div>
                   ) : files.map((f) => (
                     <div key={f.name} className="file-item" onClick={() => { setShowReport([f]); }}>
                       <span className={`file-type-dot ${f.isBinary ? "dot-pink" : "dot-blue"}`} />
@@ -292,7 +292,7 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
               ) : (
                 <div className="console-body">
                   {filteredEntries.length === 0 ? (
-                    <div className="panel-empty">{sideTab === "results" ? "No results yet" : "Console idle"}</div>
+                    <div className="panel-empty">{sideTab === "results" ? "لا توجد نتائج بعد" : "الكونسول في وضع السكون"}</div>
                   ) : filteredEntries.map((e) => (
                     <div key={e.id} className={`entry entry-${e.type}`}>
                       <span className="entry-time">[{e.time}]</span>
@@ -308,16 +308,16 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
       </div>
 
       <div className="bottom-bar">
-        <button type="button" className="bbtn" title="Quick Actions">&#9776;</button>
-        <button type="button" className="bbtn" title="Load Files" onClick={() => fileInputRef.current?.click()}>&#128194;</button>
+        <button type="button" className="bbtn" title="إجراءات سريعة">&#9776;</button>
+        <button type="button" className="bbtn" title="تحميل الملفات" onClick={() => fileInputRef.current?.click()}>&#128194;</button>
         <div className="bsp" />
-        <span className="console-status"><span className={`console-dot ${statusDot}`} /><span>{status === "Ready" ? "Idle" : status}</span></span>
+        <span className="console-status"><span className={`console-dot ${statusDot}`} /><span>{status}</span></span>
         <div className="bsp" />
         <input type="text" className="bb-input" placeholder="TriggerServerEvent, giveItem..." value={customInput} onChange={(e) => setCustomInput(e.target.value)} onKeyDown={handleKeyDown} spellCheck={false} />
         <div className="bsp" />
         <button type="button" className="bbtn" title="Webhooks">&#128279;</button>
-        <button type="button" className="bbtn" title="Export" onClick={(e) => handleExport(e)}>&#128229;</button>
-        <button type="button" className="bbtn gr" onClick={handleRun}>&#9654; Run</button>
+        <button type="button" className="bbtn" title="تصدير" onClick={(e) => handleExport(e)}>&#128229;</button>
+        <button type="button" className="bbtn gr" onClick={handleRun}>&#9654; تشغيل</button>
       </div>
 
       <input ref={fileInputRef} type="file" className="hidden-file" multiple onChange={handleFileInput} />

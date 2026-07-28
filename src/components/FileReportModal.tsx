@@ -40,15 +40,15 @@ export default function FileReportModal({ files, onClose }: Props) {
   const copyAll = () => {
     const text = results.map((r) => {
       let report = `=== ${r.fileName} ===\n`;
-      report += `Type: ${r.fileType} | Size: ${formatSize(r.fileSize)} | Binary: ${r.isBinary}\n`;
-      report += `Summary: ${r.summary}\n\n`;
+      report += `النوع: ${r.fileType} | الحجم: ${formatSize(r.fileSize)} | ثنائي: ${r.isBinary}\n`;
+      report += `الملخص: ${r.summary}\n\n`;
       r.sections.forEach((s) => {
         report += `[${s.title}]\n`;
-        s.items.forEach((i) => { report += `  ${i.label}${i.value ? `: ${i.value}` : ""}${i.line ? ` (L${i.line})` : ""}\n`; });
+        s.items.forEach((i) => { report += `  ${i.label}${i.value ? `: ${i.value}` : ""}${i.line ? ` (سطر ${i.line})` : ""}\n`; });
         report += "\n";
       });
-      if (r.warnings.length) { report += `[Warnings]\n`; r.warnings.forEach((w) => { report += `  ⚠ ${w}\n`; }); }
-      if (r.recommendations.length) { report += `[Recommendations]\n`; r.recommendations.forEach((r) => { report += `  → ${r}\n`; }); }
+      if (r.warnings.length) { report += `[تحذيرات]\n`; r.warnings.forEach((w) => { report += `  ⚠ ${w}\n`; }); }
+      if (r.recommendations.length) { report += `[توصيات]\n`; r.recommendations.forEach((r) => { report += `  → ${r}\n`; }); }
       return report;
     }).join("\n");
     navigator.clipboard.writeText(text);
@@ -58,7 +58,7 @@ export default function FileReportModal({ files, onClose }: Props) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h3>📋 File Analysis Report</h3>
+          <h3>تقرير تحليل الملف</h3>
           <div className="modal-head-actions">
             {files.length > 1 && (
               <div className="tab-switch">
@@ -74,7 +74,7 @@ export default function FileReportModal({ files, onClose }: Props) {
                 ))}
               </div>
             )}
-            <button className="admin-abtn sm" onClick={copyAll}>Copy</button>
+            <button className="admin-abtn sm" onClick={copyAll}>نسخ</button>
             <button className="modal-close" onClick={onClose}>×</button>
           </div>
         </div>
@@ -95,8 +95,8 @@ function ReportCard({ result }: { result: AnalysisResult }) {
         <span className="report-filename">{result.fileName}</span>
         <span className="report-meta">{formatSize(result.fileSize)}</span>
         <span className="report-filetype">{result.fileType}</span>
-        {result.isEmpty && <span className="report-complexity" style={{ color: "var(--red)" }}>EMPTY</span>}
-        {result.warnings.length > 0 && <span className="report-complexity" style={{ color: complexityColor }}>{result.warnings.length} Warning(s)</span>}
+        {result.isEmpty && <span className="report-complexity" style={{ color: "var(--red)" }}>فارغ</span>}
+        {result.warnings.length > 0 && <span className="report-complexity" style={{ color: complexityColor }}>{result.warnings.length} تحذير</span>}
       </div>
 
       <div className="report-summary">{result.summary}</div>
@@ -104,8 +104,8 @@ function ReportCard({ result }: { result: AnalysisResult }) {
       {result.isEmpty && (
         <div className="empty-file-notice">
           <div className="efn-icon">📭</div>
-          <div className="efn-text">This file has no content to analyze.</div>
-          <div className="efn-hint">Try uploading a file that contains data.</div>
+          <div className="efn-text">الملف لا يحتوي محتوى للتحليل.</div>
+          <div className="efn-hint">جرّب رفع ملف يحتوي بيانات.</div>
         </div>
       )}
 
@@ -123,7 +123,7 @@ function ReportCard({ result }: { result: AnalysisResult }) {
 
       {result.recommendations.length > 0 && (
         <div className="recommendations">
-          <div className="rec-title">💡 Recommendations</div>
+          <div className="rec-title">توصيات</div>
           {result.recommendations.map((r, i) => (
             <div key={i} className="rec-item">→ {r}</div>
           ))}
@@ -145,13 +145,13 @@ function ReportSection({ section }: { section: AnalysisSection }) {
       <div className="section-body">
         {section.items.slice(0, 100).map((item, i) => (
           <div key={i} className={`report-item ${item.type ? `ri-${item.type}` : ""}`}>
-            {item.line && <span className="ri-line">L{item.line}</span>}
+            {item.line && <span className="ri-line">سطر {item.line}</span>}
             <span className="ri-label">{item.label}</span>
             {item.value && <span className="ri-value">{item.value}</span>}
           </div>
         ))}
         {section.items.length > 100 && (
-          <div className="report-more">+{section.items.length - 100} more...</div>
+          <div className="report-more">+{section.items.length - 100} المزيد...</div>
         )}
       </div>
     </div>
