@@ -234,9 +234,22 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
             <span className="status-pill"><span className={`dot ${statusDot}`} /><span>{status}</span></span>
             {hasFiles && <span style={{ fontSize: 10, color: "var(--muted)", marginRight: 8 }}>{files.length} ملف | {triggerData.length} ترigger | {weaponFiles.length} سلاح</span>}
           </div>
-          <div className="tr">
-            <button type="button" className="ti" title="رفع ملف" onClick={() => fileInputRef.current?.click()}>&#128194;</button>
-            <button type="button" className="ti" title="لصق كود" onClick={() => setShowPaste(true)}>&#128203;</button>
+          <div className="tr" style={{ display: "flex", gap: 6 }}>
+            <button type="button" onClick={() => fileInputRef.current?.click()} style={{
+              display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
+              background: "linear-gradient(135deg, var(--red), #dc2626)",
+              border: "none", borderRadius: 8, color: "#fff",
+              fontSize: 12, fontWeight: 600, cursor: "pointer",
+              boxShadow: "0 2px 12px rgba(239,68,68,0.3)",
+              transition: "all 0.15s",
+            }}>&#128194; رفع ملفات</button>
+            <button type="button" onClick={() => setShowPaste(true)} style={{
+              display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
+              background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)",
+              borderRadius: 8, color: "var(--purple)",
+              fontSize: 12, fontWeight: 600, cursor: "pointer",
+              transition: "all 0.15s",
+            }}>&#128203; لصق كود</button>
             <button type="button" className="ti" title="الإدارة" onClick={onOpenAdmin}>&#9881;&#65039;</button>
           </div>
         </nav>
@@ -265,6 +278,11 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                 <span style={{ color: "var(--yellow)", fontWeight: 700, fontSize: 11 }}>&#128299; أسلحة ({filteredWeapons.length})</span>
                 <input type="text" placeholder="بحث..." value={searchW} onChange={(e) => { setSearchW(e.target.value); setSelWeapon(0); }}
                   style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 6px", color: "var(--fg)", fontSize: 10, outline: "none" }} />
+                <button onClick={() => fileInputRef.current?.click()} style={{
+                  width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(234,179,8,0.15)", border: "1px solid rgba(234,179,8,0.3)", borderRadius: 4,
+                  color: "var(--yellow)", fontSize: 14, cursor: "pointer", flexShrink: 0,
+                }} title="إضافة ملفات">+</button>
               </div>
               <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                 <div style={{ width: 150, overflowY: "auto", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
@@ -296,6 +314,11 @@ export default function Workspace({ onOpenAdmin }: { onOpenAdmin: () => void }) 
                 <span style={{ color: "var(--red)", fontWeight: 700, fontSize: 11 }}>&#9889; TriggerServerEvent ({filteredTriggers.length})</span>
                 <input type="text" placeholder="بحث..." value={searchT} onChange={(e) => { setSearchT(e.target.value); setSelTrigger(0); }}
                   style={{ flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 6px", color: "var(--fg)", fontSize: 10, outline: "none" }} />
+                <button onClick={() => fileInputRef.current?.click()} style={{
+                  width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 4,
+                  color: "var(--red)", fontSize: 14, cursor: "pointer", flexShrink: 0,
+                }} title="إضافة ملفات">+</button>
                 <button onClick={() => {
                   let text = "";
                   filteredTriggers.forEach((t) => { text += `=== ${t.file.name} ===\n`; t.events.forEach((e) => { text += `  TriggerServerEvent("${e.name}")\n`; }); text += "\n"; });
