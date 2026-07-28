@@ -42,6 +42,12 @@ export function analyzeFile(name: string, content: string, size: number, isBinar
     };
   }
 
+  const hasFiveMContent = /TriggerServerEvent|TriggerClientEvent|RegisterNetEvent|AddEventHandler|TriggerEvent|game\s*:\s*GetService|Citizen\.CreateThread|Citizen\.Wait/i.test(content);
+
+  if (hasFiveMContent && ext !== ".lua" && ext !== ".luau") {
+    return analyzeLua(name, content, size);
+  }
+
   const analyzers: Record<string, () => AnalysisResult> = {
     ".lua": () => analyzeLua(name, content, size),
     ".luau": () => analyzeLua(name, content, size),
@@ -106,6 +112,7 @@ function analyzeLua(name: string, content: string, size: number): AnalysisResult
   lines.forEach((line, idx) => {
     const ln = idx + 1;
     const t = line.trim();
+    if (!t || t.startsWith("--")) return;
 
     const funcMatch = t.match(/(?:local\s+)?function\s+(\w+(?:[.:]\w+)*)\s*\(([^)]*)\)/);
     if (funcMatch) {
@@ -118,7 +125,7 @@ function analyzeLua(name: string, content: string, size: number): AnalysisResult
     }
 
     const varMatch = t.match(/(?:local\s+)?(\w+)\s*=\s*(.+)/);
-    if (varMatch && !t.startsWith("--") && !t.startsWith("function")) {
+    if (varMatch && !t.startsWith("function")) {
       const val = varMatch[2].trim();
       let type = "مجهول";
       if (val.startsWith('"') || val.startsWith("'")) type = "نص";
@@ -173,6 +180,15 @@ function analyzeLua(name: string, content: string, size: number): AnalysisResult
 
   const sections: AnalysisSection[] = [];
 
+  if (triggerEvents.length > 0) {
+    sections.push({
+      title: "أحداث FiveM (Trigger Events)",
+      color: "var(--red)",
+      icon: "\u26A1",
+      items: triggerEvents.map((e) => ({ label: `${e.type}("${e.name}")`, type: "warning" as const, line: e.line, value: e.type })),
+    });
+  }
+
   if (functions.length > 0) {
     sections.push({
       title: "الدوال",
@@ -193,7 +209,7 @@ function analyzeLua(name: string, content: string, size: number): AnalysisResult
       icon: "v",
       items: variables.map((v) => ({
         label: v.name,
-        value: `${v.type} = ${v.value}`,
+        value: `${v.type} = ${v.type === "نص" ? `"${v.value}"` : v.value}`,
         type: "info" as const,
         line: v.line,
       })),
@@ -202,19 +218,10 @@ function analyzeLua(name: string, content: string, size: number): AnalysisResult
 
   if (events.length > 0) {
     sections.push({
-      title: "الأحداث",
+      title: "أحداث الاتصال",
       color: "var(--yellow)",
       icon: "!",
       items: events.map((e) => ({ label: e.name, type: "info" as const, line: e.line })),
-    });
-  }
-
-  if (triggerEvents.length > 0) {
-    sections.push({
-      title: "أحداث FiveM (Trigger)",
-      color: "var(--red)",
-      icon: "\u26A1",
-      items: triggerEvents.map((e) => ({ label: `${e.type}("${e.name}")`, type: "warning" as const, line: e.line, value: e.type })),
     });
   }
 
